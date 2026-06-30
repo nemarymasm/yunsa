@@ -60,8 +60,9 @@
   .fb.show{display:block}
   .fb.ok{background:var(--oBg);border:1px solid var(--o)}
   .fb.no{background:var(--xBg);border:1px solid var(--x)}
+  .fb.dunno{background:#1b2436;border:1px solid #3a4a66}
   .fbResult{font-weight:800;font-size:19px;margin-bottom:10px}
-  .fbResult.ok{color:var(--o)} .fbResult.no{color:var(--x)}
+  .fbResult.ok{color:var(--o)} .fbResult.no{color:var(--x)} .fbResult.dn{color:var(--blue)}
   .fbCompare{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
   .cmp{font-size:13px;font-weight:700;border-radius:8px;padding:4px 10px;border:1px solid var(--line)}
   .cmp.good{background:var(--oBg);color:var(--o);border-color:var(--o)}
@@ -77,16 +78,20 @@
 
   /* ===== bottom dock ===== */
   .dock{flex:0 0 auto;padding:10px 14px calc(12px + var(--safe));border-top:1px solid var(--line);background:var(--bg)}
-  .ox{display:flex;gap:12px}
-  .ox button{flex:1;height:66px;border-radius:16px;border:2px solid var(--line);background:var(--panel2);color:var(--txt);font-size:21px;font-weight:800}
-  .ox button.O{border-color:rgba(70,212,147,.45)} .ox button.O:active{background:var(--oBg)}
-  .ox button.X{border-color:rgba(255,107,107,.45)} .ox button.X:active{background:var(--xBg)}
-  .ox button .sm{display:block;font-size:12px;color:var(--mut);font-weight:700;margin-top:1px}
+  .choices{display:flex;flex-direction:column;gap:10px}
+  .crow{display:flex;gap:10px}
+  .crow button{flex:1;border-radius:15px;border:2px solid var(--line);background:var(--panel2);color:var(--txt);font-weight:800}
+  .crow.main button{height:60px;font-size:20px}
+  .crow.sub button{height:46px;font-size:15px;font-weight:700;color:var(--mut);border-width:1px}
+  .crow button.O{border-color:rgba(70,212,147,.5)} .crow button.O:active{background:var(--oBg)}
+  .crow button.X{border-color:rgba(255,107,107,.5)} .crow button.X:active{background:var(--xBg)}
+  .crow button.dunno:active{background:#23304a}
+  .crow button.flag{color:#e7a14a} .crow button.flag:active{background:#3a2a16}
   .nextRow{display:none;gap:10px}
   .nextRow .star{flex:0 0 64px;height:62px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);font-size:24px;color:#54627a}
   .nextRow .star.on{color:var(--gold);border-color:var(--gold)}
   .nextRow .next{flex:1;height:62px;border-radius:16px;border:none;background:var(--gold);color:#000;font-size:18px;font-weight:800}
-  .dock.answered .ox{display:none}
+  .dock.answered .choices{display:none}
   .dock.answered .nextRow{display:flex}
 
   /* ===== done ===== */
@@ -121,6 +126,19 @@
 
   .toast{position:fixed;left:50%;bottom:calc(96px + var(--safe));transform:translateX(-50%);background:var(--o);color:#04130c;font-weight:800;padding:9px 18px;border-radius:30px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:30;white-space:nowrap;max-width:90vw}
   .toast.show{opacity:1}
+  .objpill{background:transparent;border:1px solid #5a4324;color:#e7a14a;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:800}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:40}
+  .overlay.show{display:flex}
+  .sheet{background:var(--panel);width:100%;max-height:82dvh;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + var(--safe));display:flex;flex-direction:column}
+  .sheetH{font-weight:800;font-size:16px;margin-bottom:10px}
+  .objList{overflow-y:auto;flex:1}
+  .objitem{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+  .oi-id{font-size:11px;color:var(--mut)}
+  .oi-tx{font-size:13px;margin:3px 0;word-break:keep-all}
+  .oi-note{font-size:13px;color:#e7a14a}
+  .sheetB{display:flex;gap:8px;margin-top:10px}
+  .sheetB button{flex:1;padding:11px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:13px;font-weight:700}
+  .sheetB button.prim{background:var(--gold);color:#000;border:none}
 </style>
 </head>
 <body>
@@ -128,8 +146,9 @@
   <!-- TOP -->
   <div class="top">
     <div class="toprow">
-      <div class="title">🏛️ 플라톤 정복</div>
+      <div class="title">🏛️ 플라톤</div>
       <div class="spacer"></div>
+      <button class="objpill" id="objpill" style="display:none" onclick="showObjections()">⚑ <span id="objCount">0</span></button>
       <button class="bmpill" id="bmpill" onclick="toggleBookmarkMode()">⭐ <span id="bmCount">0</span></button>
       <div class="toggle" id="diffToggle">
         <button data-d="basic" class="on">기본</button>
@@ -151,6 +170,7 @@
       <div class="meta">
         <span class="pill" id="qid">—</span>
         <span class="pill hard" id="qsym" style="display:none"></span>
+        <span id="qflag" style="display:none;color:#e7a14a;font-size:12px;font-weight:800">⚑ 이의됨</span>
         <button class="starbtn" id="starbtn" onclick="toggleStar()" title="다시 풀 문제 보관">☆</button>
       </div>
       <div class="ctx" id="qctx" style="display:none"></div>
@@ -176,9 +196,15 @@
     </div>
 
     <div class="dock" id="dock">
-      <div class="ox">
-        <button class="O" onclick="answer('O')">○ 옳다<span class="sm">플라톤의 입장이다</span></button>
-        <button class="X" onclick="answer('X')">✕ 아니다<span class="sm">플라톤 입장이 아니다</span></button>
+      <div class="choices">
+        <div class="crow main">
+          <button class="O" onclick="answer('O')">○ 옳다</button>
+          <button class="X" onclick="answer('X')">✕ 아니다</button>
+        </div>
+        <div class="crow sub">
+          <button class="dunno" onclick="dunno()">🤔 모르겠다</button>
+          <button class="flag" onclick="objectQ()">⚑ 이의있다</button>
+        </div>
       </div>
       <div class="nextRow">
         <button class="star" id="dockStar" onclick="toggleStar()">☆</button>
@@ -198,6 +224,18 @@
     <div class="note"><b>도전 모드</b>를 켜면 같은 명제를 <b>진리값을 보존한 채 더 어렵게</b> 비튼 선지(대우·이중부정·양화 동치)가 섞여 나와. <b style="color:var(--x)">거짓동치</b>(의미가 바뀐 것)는 섞지 않음.</div>
     <div id="eqlist"></div>
   </div></div>
+
+  <div class="overlay" id="objOverlay">
+    <div class="sheet">
+      <div class="sheetH">⚑ 이의 목록 (<span id="objN">0</span>)</div>
+      <div class="objList" id="objList"></div>
+      <div class="sheetB">
+        <button onclick="copyObjections()">전체 복사</button>
+        <button onclick="clearObjections()">전체 삭제</button>
+        <button class="prim" onclick="hideObjections()">닫기</button>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
@@ -310,11 +348,13 @@ function speakerClean(t){return t.replace(/^\s*(갑과\s*을|갑|을|A|B|C)\s*[:
 function shownText(d){return d.display || speakerClean(d.text);}
 
 /* ===== state ===== */
-const LSP="plato_master_v2", LSB="plato_bm_v1";
-let prog=loadJSON(LSP), BM=loadJSON(LSB);
+const LSP="plato_master_v2", LSB="plato_bm_v1", LSO="plato_obj_v1";
+let prog=loadJSON(LSP), BM=loadJSON(LSB), OBJ=loadArr(LSO);
 function loadJSON(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch(e){return{}}}
+function loadArr(k){try{const v=JSON.parse(localStorage.getItem(k));return Array.isArray(v)?v:[]}catch(e){return[]}}
 function saveP(){localStorage.setItem(LSP,JSON.stringify(prog))}
 function saveB(){localStorage.setItem(LSB,JSON.stringify(BM))}
+function saveO(){localStorage.setItem(LSO,JSON.stringify(OBJ))}
 function mastered(k){return !!prog[k]}
 function starred(k){return !!BM[k]}
 
@@ -369,26 +409,28 @@ function render(){
   document.getElementById("fb").className="fb";
   dock.className="dock";
   syncStar();
+  document.getElementById("qflag").style.display=OBJ.some(o=>o.key===cur.key)?"":"none";
   document.getElementById("qzone").scrollTop=0;
 }
 
-function answer(pick){
+function reveal(pick){            // pick: 'O' | 'X' | null(모르겠다)
   if(answered)return;answered=true;
-  lastCorrect=(pick===cur.ox);
+  const known = pick!==null;
+  lastCorrect = known && (pick===cur.ox);
   const ax=AX[cur.axis];
-  const pickL = pick==="O"?"○ 옳다":"✕ 아니다";
-  const ansL  = cur.ox==="O"?"○ 옳다":"✕ 아니다";
+  const ansL = cur.ox==="O"?"○ 옳다":"✕ 아니다";
 
   const fb=document.getElementById("fb");
-  fb.className="fb show "+(lastCorrect?"ok":"no");
+  fb.className="fb show "+(lastCorrect?"ok":(known?"no":"dunno"));
 
   const res=document.getElementById("fbResult");
-  res.className="fbResult "+(lastCorrect?"ok":"no");
-  res.textContent=lastCorrect?"✅ 맞았어요!":"❌ 틀렸어요";
+  res.className="fbResult "+(lastCorrect?"ok":(known?"no":"dn"));
+  res.textContent = !known ? "🤔 모르겠다 — 정답 확인하고 다시 풀자" : (lastCorrect?"✅ 맞았어요!":"❌ 틀렸어요");
 
-  document.getElementById("fbCompare").innerHTML=
-    `<span class="cmp ${lastCorrect?'good':'bad'}">내 선택 · ${pickL}</span>`+
-    `<span class="cmp ans">정답 · ${ansL}</span>`;
+  let cmp="";
+  if(known) cmp += `<span class="cmp ${lastCorrect?'good':'bad'}">내 선택 · ${pick==="O"?"○ 옳다":"✕ 아니다"}</span>`;
+  cmp += `<span class="cmp ans">정답 · ${ansL}</span>`;
+  document.getElementById("fbCompare").innerHTML=cmp;
 
   document.getElementById("fbConcl").textContent =
     (cur.ox==="O" ? "→ 이 선지는 플라톤의 입장이 ‘맞다’." : "→ 이 선지는 플라톤의 입장이 ‘아니다’.");
@@ -405,6 +447,17 @@ function answer(pick){
 
   if(lastCorrect){prog[cur.key]=1;saveP();}
   document.getElementById("dock").className="dock answered";
+}
+function answer(pick){reveal(pick);}
+function dunno(){reveal(null);}
+function objectQ(){
+  if(!cur||answered)return;
+  const note=prompt("이 문제의 문제점을 적어주세요 (적고 패스):","");
+  if(note===null) return;
+  OBJ.push({key:cur.key,id:cur.id,sym:cur.sym,text:shownText(cur),note:note,t:new Date().toISOString().slice(0,16).replace("T"," ")});
+  saveO();toast("⚑ 이의 기록 후 패스");
+  const k=queue.shift(); queue.push(k);   // 채점 없이 맨 뒤로
+  render();
 }
 
 function nextCard(){
@@ -434,6 +487,8 @@ function updateProgress(){
     pl.textContent="남은 "+queue.length+"개"+(diff==="hard"?" · 도전":"");
   }
   document.getElementById("bmCount").textContent=Object.keys(BM).length;
+  document.getElementById("objCount").textContent=OBJ.length;
+  document.getElementById("objpill").style.display=OBJ.length?"":"none";
 }
 
 /* ===== bookmark ===== */
@@ -473,6 +528,26 @@ document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{
 });
 
 let tT;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),1400);}
+
+/* ===== 이의 목록 ===== */
+function showObjections(){
+  document.getElementById("objN").textContent=OBJ.length;
+  document.getElementById("objList").innerHTML = OBJ.length
+    ? OBJ.map(o=>`<div class="objitem"><div class="oi-id">${o.id} ${o.sym} · ${o.t}</div><div class="oi-tx">${o.text}</div><div class="oi-note">⚑ ${o.note||"(메모 없음)"}</div></div>`).join("")
+    : "<div style='color:var(--mut);font-size:13px'>아직 이의 없음</div>";
+  document.getElementById("objOverlay").classList.add("show");
+}
+function hideObjections(){document.getElementById("objOverlay").classList.remove("show");}
+function copyObjections(){
+  if(!OBJ.length){toast("복사할 이의 없음");return;}
+  const txt=OBJ.map(o=>`[${o.id} ${o.sym}] ${o.text}\n  → ${o.note}`).join("\n\n");
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast("이의 전체 복사됨"),()=>toast("복사 실패"));}
+  else toast("복사 미지원 브라우저");
+}
+function clearObjections(){
+  if(!OBJ.length){return;}
+  if(confirm("이의 기록을 모두 지울까?")){OBJ=[];saveO();updateProgress();showObjections();if(cur)document.getElementById("qflag").style.display="none";}
+}
 
 /* matrix */
 (function(){
