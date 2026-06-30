@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>플라톤 정복</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#171c26; --panel2:#1d2430; --line:#2a3340;
+    --txt:#eef2f8; --mut:#93a1b4; --gold:#ffcf52; --blue:#62a9ff;
+    --o:#46d493; --x:#ff6b6b; --oBg:rgba(70,212,147,.16); --xBg:rgba(255,107,107,.15);
+    --safe: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--txt);
+    font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif;
+    line-height:1.65;overscroll-behavior:none;
+    display:flex;flex-direction:column;height:100dvh;
+  }
+  button{font-family:inherit;touch-action:manipulation;user-select:none;cursor:pointer}
+
+  /* ===== top bar ===== */
+  .top{flex:0 0 auto;padding:10px 14px 8px;border-bottom:1px solid var(--line);background:var(--bg)}
+  .toprow{display:flex;align-items:center;gap:8px}
+  .title{font-size:15px;font-weight:800;white-space:nowrap}
+  .title small{color:var(--mut);font-weight:600;font-size:11px}
+  .spacer{flex:1}
+  .bmpill{background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:800}
+  .bmpill.on{background:var(--gold);color:#000;border-color:var(--gold)}
+  .toggle{display:flex;border:1px solid var(--line);border-radius:20px;overflow:hidden;font-size:11.5px;font-weight:800}
+  .toggle button{background:transparent;color:var(--mut);border:none;padding:5px 10px}
+  .toggle button.on{background:var(--blue);color:#001}
+  .nav{display:flex;gap:6px;margin-top:9px}
+  .nav button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:9px;padding:7px;font-size:12px;font-weight:700}
+  .nav button.active{background:var(--panel2);color:var(--txt);border-color:#3a4658}
+  .bar{height:6px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:9px}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--o),var(--gold));transition:width .35s}
+  .pstat{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:5px}
+
+  /* ===== pages ===== */
+  .page{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none}
+  .page.active{display:block}
+  #loop{display:flex;flex-direction:column}
+
+  /* ===== quiz zone ===== */
+  .qzone{flex:1 1 auto;padding:16px 18px 8px;display:flex;flex-direction:column}
+  .meta{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mut);margin-bottom:8px}
+  .pill{border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .pill.hard{color:#000;background:var(--gold);border-color:var(--gold);font-weight:800}
+  .starbtn{margin-left:auto;background:transparent;border:none;font-size:26px;line-height:1;color:#54627a;padding:2px 4px}
+  .starbtn.on{color:var(--gold)}
+  .ask{font-size:13px;color:var(--mut);margin:2px 0 2px}
+  .ask b{color:var(--txt)}
+  .stem{font-size:21px;font-weight:600;letter-spacing:-.2px;word-break:keep-all;margin:6px 0 4px}
+
+  .fb{margin-top:16px;border-radius:14px;padding:15px 16px;display:none;animation:rise .22s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .fb.show{display:block}
+  .fb.ok{background:var(--oBg);border:1px solid var(--o)}
+  .fb.no{background:var(--xBg);border:1px solid var(--x)}
+  .fbResult{font-weight:800;font-size:19px;margin-bottom:10px}
+  .fbResult.ok{color:var(--o)} .fbResult.no{color:var(--x)}
+  .fbCompare{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .cmp{font-size:13px;font-weight:700;border-radius:8px;padding:4px 10px;border:1px solid var(--line)}
+  .cmp.good{background:var(--oBg);color:var(--o);border-color:var(--o)}
+  .cmp.bad{background:var(--xBg);color:var(--x);border-color:var(--x);text-decoration:line-through}
+  .cmp.ans{background:#222a36;color:var(--gold);border-color:#3a4658}
+  .fbConcl{font-size:15px;font-weight:700;margin-bottom:10px}
+  .axline{font-size:12px;color:var(--blue);font-weight:800;margin-bottom:6px}
+  .why{font-size:15px}
+  .form{font-size:12.5px;color:var(--gold);margin-top:8px}
+  .canon{font-size:12.5px;color:var(--mut);margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+
+  /* ===== bottom dock ===== */
+  .dock{flex:0 0 auto;padding:10px 14px calc(12px + var(--safe));border-top:1px solid var(--line);background:var(--bg)}
+  .ox{display:flex;gap:12px}
+  .ox button{flex:1;height:66px;border-radius:16px;border:2px solid var(--line);background:var(--panel2);color:var(--txt);font-size:21px;font-weight:800}
+  .ox button.O{border-color:rgba(70,212,147,.45)} .ox button.O:active{background:var(--oBg)}
+  .ox button.X{border-color:rgba(255,107,107,.45)} .ox button.X:active{background:var(--xBg)}
+  .ox button .sm{display:block;font-size:12px;color:var(--mut);font-weight:700;margin-top:1px}
+  .nextRow{display:none;gap:10px}
+  .nextRow .star{flex:0 0 64px;height:62px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);font-size:24px;color:#54627a}
+  .nextRow .star.on{color:var(--gold);border-color:var(--gold)}
+  .nextRow .next{flex:1;height:62px;border-radius:16px;border:none;background:var(--gold);color:#000;font-size:18px;font-weight:800}
+  .dock.answered .ox{display:none}
+  .dock.answered .nextRow{display:flex}
+
+  /* ===== done ===== */
+  .done{display:none;text-align:center;padding:46px 20px;margin:auto}
+  .done.show{display:block}
+  .done .big{font-size:54px}
+  .done h2{margin:8px 0 4px;font-size:20px}
+  .done p{color:var(--mut);font-size:13px}
+  .done button{margin-top:18px;background:var(--panel);border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:11px 18px;font-size:14px;font-weight:700}
+
+  /* ===== matrix / equiv ===== */
+  .inner{padding:16px 16px 40px}
+  .note{font-size:12.5px;color:var(--mut);background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:14px}
+  .note b{color:var(--gold)}
+  .axcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:11px}
+  .axcard h3{margin:0 0 3px;font-size:15px}
+  .axcard .code{color:var(--blue);font-weight:800;margin-right:6px}
+  .axcard .canon{font-size:12.5px;color:var(--gold);margin:3px 0 9px}
+  .axcard .cnt{float:right;font-size:11px;color:var(--mut);font-weight:600}
+  .sel{font-size:13px;border-left:3px solid var(--line);padding:5px 0 5px 9px;margin:5px 0;word-break:keep-all}
+  .sel .b{display:inline-block;width:17px;height:17px;line-height:17px;text-align:center;border-radius:5px;font-weight:800;font-size:11px;margin-right:6px}
+  .sel.o{border-color:var(--o)} .sel.o .b{background:var(--oBg);color:var(--o)}
+  .sel.x{border-color:var(--x)} .sel.x .b{background:var(--xBg);color:var(--x)}
+  .sel .id{color:#5b6878;font-size:10.5px;margin-left:5px}
+  .eq{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:11px}
+  .eq .src{font-size:11.5px;color:var(--mut)}
+  .eq .orig{font-weight:700;margin:4px 0 9px;word-break:keep-all}
+  .eq .row{font-size:13px;padding:7px 10px;border-radius:9px;margin:5px 0;background:var(--panel2);word-break:keep-all}
+  .eq .row.warn{border:1px dashed var(--x)}
+  .eq .tag{font-size:10.5px;font-weight:800;border-radius:5px;padding:1px 7px;margin-right:7px}
+  .eq .tO{background:var(--oBg);color:var(--o)} .eq .tX{background:var(--xBg);color:var(--x)}
+
+  .toast{position:fixed;left:50%;bottom:calc(96px + var(--safe));transform:translateX(-50%);background:var(--o);color:#04130c;font-weight:800;padding:9px 18px;border-radius:30px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:30;white-space:nowrap;max-width:90vw}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+  <!-- TOP -->
+  <div class="top">
+    <div class="toprow">
+      <div class="title">🏛️ 플라톤 정복</div>
+      <div class="spacer"></div>
+      <button class="bmpill" id="bmpill" onclick="toggleBookmarkMode()">⭐ <span id="bmCount">0</span></button>
+      <div class="toggle" id="diffToggle">
+        <button data-d="basic" class="on">기본</button>
+        <button data-d="hard">도전</button>
+      </div>
+    </div>
+    <div class="nav">
+      <button class="active" data-p="loop">시험</button>
+      <button data-p="matrix">쟁점</button>
+      <button data-p="equiv">동치</button>
+    </div>
+    <div class="bar"><i id="pbar"></i></div>
+    <div class="pstat"><span id="pleft">—</span><span id="pmastered">—</span></div>
+  </div>
+
+  <!-- LOOP -->
+  <div class="page active" id="loop">
+    <div class="qzone" id="qzone">
+      <div class="meta">
+        <span class="pill" id="qid">—</span>
+        <span class="pill hard" id="qsym" style="display:none"></span>
+        <button class="starbtn" id="starbtn" onclick="toggleStar()" title="다시 풀 문제 보관">☆</button>
+      </div>
+      <div class="ask">이 선지는 <b>플라톤</b>의 입장으로 옳은가?</div>
+      <div class="stem" id="qstem">로딩 중…</div>
+      <div class="fb" id="fb">
+        <div class="fbResult" id="fbResult"></div>
+        <div class="fbCompare" id="fbCompare"></div>
+        <div class="fbConcl" id="fbConcl"></div>
+        <div class="axline" id="fbAx"></div>
+        <div class="why" id="fbWhy"></div>
+        <div class="form" id="fbForm"></div>
+        <div class="canon" id="fbCanon"></div>
+      </div>
+    </div>
+
+    <div class="done" id="done">
+      <div class="big">🏛️✨</div>
+      <h2 id="doneTitle">전부 정복!</h2>
+      <p id="doneSub"></p>
+      <button onclick="restart()">처음부터 다시</button>
+    </div>
+
+    <div class="dock" id="dock">
+      <div class="ox">
+        <button class="O" onclick="answer('O')">○ 옳다<span class="sm">플라톤의 입장이다</span></button>
+        <button class="X" onclick="answer('X')">✕ 아니다<span class="sm">플라톤 입장이 아니다</span></button>
+      </div>
+      <div class="nextRow">
+        <button class="star" id="dockStar" onclick="toggleStar()">☆</button>
+        <button class="next" onclick="nextCard()">다음 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATRIX -->
+  <div class="page" id="matrix"><div class="inner">
+    <div class="note">이 <b>쟁점 매트릭스</b>가 정답 판정의 기준(진실 원천)이야. 각 축의 "플라톤 정설"에 비추어 선지의 정오가 갈려.</div>
+    <div id="axlist"></div>
+  </div></div>
+
+  <!-- EQUIV -->
+  <div class="page" id="equiv"><div class="inner">
+    <div class="note"><b>도전 모드</b>를 켜면 같은 명제를 <b>진리값을 보존한 채 더 어렵게</b> 비튼 선지(대우·이중부정·양화 동치)가 섞여 나와. <b style="color:var(--x)">거짓동치</b>(의미가 바뀐 것)는 섞지 않음.</div>
+    <div id="eqlist"></div>
+  </div></div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* ===== 쟁점 매트릭스 ===== */
+const AX = {
+  J1:{name:"정의=직분 충실", canon:"정의란 각 계층이 '자기 직분(제 일)'에 충실한 것. 역할 교환은 오히려 부정의."},
+  J2:{name:"절제=세 계층 공통덕", canon:"절제는 세 계층 모두에게 요구되는 공통의 덕. 이성이 욕망을 다스릴 때 갖춰짐."},
+  J3:{name:"지혜=통치자 고유덕", canon:"지혜는 통치자(이성)에게 고유한 덕. 모든 계층에 요구되는 게 아니다."},
+  J4:{name:"용기=기개의 덕", canon:"용기는 기개의 덕. 기개가 '이성의 명령을 따라' 두려운 것과 아닌 것을 분별할 때 발휘(기개가 영혼을 지배하는 게 아님)."},
+  J5:{name:"국가-영혼 유비", canon:"국가(3계층)와 개인 영혼(3부분)은 구조적으로 유사. 큰 글자(국가)로 작은 글자(개인)를 읽는다."},
+  J6:{name:"통치자=선의 이데아 인식한 철인", canon:"통치자는 선의 이데아를 인식한 철학자이며 지혜를 갖춤. 나아가 절제·용기까지 갖춘 자."},
+  J7:{name:"통치자 선발=소질+교육", canon:"통치자는 타고난 소질을 갖춘 자를 선발해 장기 교육으로 양성. 누구나 되는 게 아니다."},
+  J8:{name:"정치체제=철인 통치", canon:"통치는 지혜를 갖춘 철인이 맡아야. 시민 직접참여나 '아무나 통치'는 부정."},
+  J9:{name:"사유재산=수호자✗ 생산자✓", canon:"수호자·통치자 계급은 사유재산 금지(공유). 생산자 계층은 사유재산 허용."},
+  J10:{name:"이데아론=이성·초월", canon:"이데아는 초월적이며 이성으로만 파악. 감각으로는 가변 현상만, 이데아가 사물 안에 내재하지 않음."},
+  J11:{name:"덕=행복 일치", canon:"덕과 행복은 일치. 덕 없이 행복할 수 없고, 정의로운 영혼은 불행해질 수 없다."},
+  J12:{name:"反아리스토텔레스", canon:"실천적 지혜로 파악한 중용, 감정을 통한 덕 등은 아리스토텔레스의 입장 — 플라톤 것이 아니다(변별 함정)."},
+};
+
+/* ===== 기본 선지 ===== */
+const BASE = [
+ ["2014-6평-01","ㄴ","X","을은 각 계층 간의 역할 교환을 통해 정의가 실현된다고 본다.","J1","정의는 각자 직분에 충실할 때 실현. 역할 교환은 부정의."],
+ ["2015-6평-06","②","X","을은 이상국가의 수호자의 덕에는 앎이 필요 없다고 생각한다.","J7","수호자의 덕은 앎(지혜)에 기반. '앎 불필요'는 정반대."],
+ ["2015-수능-09","②","X","갑은 지혜의 덕을 갖춘 사람은 절제의 덕이 필요 없다고 본다.","J2","절제는 세 계층 모두의 공통 덕. 지혜가 있어도 절제는 필요."],
+ ["2015-수능-09","①","O","갑은 정의의 덕을 갖춘 사람은 절대 불행해질 수 없다고 본다.","J11","덕과 행복은 일치. 정의로운 영혼=행복한 영혼."],
+ ["2017-수능-16","③","X","명예와 승리를 좋아하는 영혼의 부분에서 드러나는 고유의 덕이다.","J4","이건 기개(용기) 설명. 답 칸 A=절제이므로 ✕."],
+ ["2017-수능-16","①","X","이성의 명령을 따름으로써 발휘되는 기개의 고유한 탁월성이다.","J4","기개의 덕=용기 설명. A=절제라 ✕."],
+ ["2017-수능-16","②","X","영혼의 각 부분이 역할을 다하여 전체적인 조화를 이룬 상태이다.","J1","이건 정의 설명. A=절제라 ✕."],
+ ["2017-수능-16","④","X","욕망의 유익과 해악을 헤아리고 계산할 줄 아는 영혼의 탁월성이다.","J3","헤아림·계산은 이성(지혜)의 기능. A=절제라 ✕."],
+ ["2017-수능-16","⑤","O","영혼의 건강을 위해 영혼의 세 부분에 공통적으로 요구되는 덕이다.","J2","절제의 정확한 정의 — 세 부분 공통의 덕. A=절제 ○."],
+ ["2018-6평-17","①","O","철인왕은 이성이 뛰어나지만 참주는 욕망이 우세하다.","J6","철인왕=이성 지배, 참주=욕망 지배."],
+ ["2018-6평-17","④","X","이상 국가에서는 전체 시민의 직접적인 정치 참여가 강조된다.","J8","통치는 철인(소수)이 담당. 전체 직접참여는 부정."],
+ ["2018-6평-17","⑤","O","철인왕의 지혜는 국가를 정의롭게 만들기 위해 필요한 덕이다.","J6","통치자의 지혜가 국가 정의의 핵심 조건."],
+ ["2018-6평-17","③","O","철인왕은 영혼의 세 부분이 조화로운 관계를 이루고 있다.","J5","철인=세 부분 조화(이성이 지배)."],
+ ["2018-6평-17","②","O","이상 국가에서 세 계층은 모두 절제의 덕을 갖추고 있다.","J2","절제=세 계층 공통 덕. 모두 갖춤 ○."],
+ ["2018-9평-19","①","O","갑: 선의 이데아에 대한 지식을 가진 철학자가 이상 국가를 통치한다.","J6","통치자=선의 이데아를 인식한 철학자."],
+ ["2018-9평-19","②","X","갑: 절제는 이상 국가에서 생산자 계층 사람만이 갖춰야 하는 덕이다.","J2","절제가 생산자만 ✕ — 세 계층 모두의 공통 덕."],
+ ["2019-6평-23","①","X","갑: 욕구와 관련된 부분의 덕은 행복에 이바지할 수 없다.","J11","욕구 부분의 덕(절제)도 영혼 조화·행복에 기여. '이바지 못함'은 ✕."],
+ ["2019-6평-23","②","X","갑: 실천적 지혜를 통해 파악한 중용에 따라 행위해야 한다.","J12","실천적 지혜·중용은 아리스토텔레스. 플라톤 입장 아님."],
+ ["2019-6평-23","③","X","갑: 덕 있는 행위는 감정을 배제한 상태에서 이루어져야만 한다.","J12","기개(감정)도 이성에 협력. '감정 완전 배제'는 ✕."],
+ ["2020-6평-30","ㄴ","X","갑: 절제는 개인의 영혼과 관계없는 공동체의 탁월함이다.","J2","절제는 개인 영혼(이성이 욕망 지배)에서 비롯. '영혼과 무관'은 ✕."],
+ ["2020-6평-30","ㄱ","O","갑: 절제는 이성이 욕망을 다스려야 갖출 수 있는 덕이다.","J2","절제의 정의 — 이성이 욕망을 지배함."],
+ ["2020-9평-31","ㄷ","O","B: 이성이 욕구를 지배하여 나타나는 덕은 모든 사람에게 필요한가?","J2","그 덕=절제는 세 계층 모두에게 필요 → 적절한 물음 ○."],
+ ["2020-수능-34","①","X","갑은 전체를 위한 유익함이 무엇인지 아는 것을 용기라고 본다.","J4","그 '앎'은 지혜에 가까움. 용기=두려운 것/아닌 것의 분별."],
+ ["2020-수능-34","②","X","갑은 덕을 갖추지 않고도 행복해질 수 있는 길이 있다고 본다.","J11","덕 없이 행복 불가. 덕=행복의 필요조건."],
+ ["2021-수능-37","①","X","갑: 감각 능력을 키우면 영원불변한 세계를 파악할 수 있다.","J10","영원불변(이데아)은 이성으로만 파악. 감각은 가변 현상만."],
+ ["2021-수능-37","②","X","갑: 이데아는 현실 세계에 있는 모든 사물 안에 존재하는 것이다.","J10","이데아는 초월적. '사물 안에 내재'는 아리스토텔레스."],
+ ["2022-수능-40","①","O","각 계층이 각자 해야 할 일에 충실한 것이 정의이다.","J1","정의=각자 자기 직분에 충실(제 일 하기)."],
+ ["2022-수능-40","②","O","정의로운 국가에서는 사유 재산이 허용되는 계층이 있다.","J9","생산자는 사유재산 허용. 수호자·통치자는 금지."],
+ ["2022-수능-40","④","X","국가 전체의 좋음을 인식할 수 있는 사람은 존재할 수 없다.","J6","선의 이데아를 인식한 철학자가 전체의 좋음을 안다. '없다'는 ✕."],
+ ["2022-수능-40","⑤","O","절제의 덕을 갖추지 못한 사람은 이상 국가의 통치자가 될 수 없다.","J6","통치자도 절제(+지혜·용기) 갖춰야. 절제 없으면 통치 불가."],
+ ["2022-수능-40","③","O","이상 국가를 구성하는 세 계층 모두에게 공통된 덕이 있다.","J2","공통 덕=절제."],
+ ["2023-수능-41","①","X","갑: 선 자체는 인식의 원인이므로 인식의 대상이 될 수는 없다.","J10","선의 이데아는 인식의 원인이자 최고의 인식 대상. '대상 불가'는 ✕."],
+ ["2023-수능-41","②","X","갑: 이성이 파악하는 대상과 감각이 파악하는 대상은 동일하다.","J10","이성의 대상(이데아)≠감각의 대상(현상). 구분됨."],
+ ["2024-6평-42","①","O","갑: 정의로운 인간의 본질은 이상 국가로부터 유추할 수 있다.","J5","국가:영혼 유비 — 큰 글자로 작은 글자를 읽음."],
+ ["2024-6평-42","②","X","갑: 지혜는 이성의 탁월함으로 국가의 모든 계층에게 요구된다.","J3","지혜는 통치자(이성) 고유의 덕. '모든 계층'은 ✕."],
+ ["2024-수능-45","①","X","누구나 타고난 소질을 잘 발휘하면 통치자가 될 수 있다.","J7","통치자는 선발+장기교육으로 양성. '누구나'는 ✕."],
+ ["2024-수능-45","②","O","통치자는 이데아를 인식하여 지혜의 덕을 갖춘 자들로 구성된다.","J6","통치자=이데아 인식+지혜."],
+ ["2024-수능-45","③","O","방위자는 교육을 통해 용기의 덕을 쌓고 두려움에 대해 분별한다.","J4","방위자(수호자)=용기. 두려운 것/아닌 것 분별."],
+ ["2024-수능-45","⑤","O","국가의 세 계층이 각자 자신의 소임을 다할 때 정의가 실현된다.","J1","정의=각 계층의 직분 수행."],
+ ["2024-수능-45","④","O","생산자가 가진 덕을 다른 두 계층도 공통적으로 갖추고 있다.","J2","생산자의 덕(절제)을 세 계층 모두 공유."],
+ ["2025-6평-48","④","O","을: 통치자는 지혜와 더불어 용기와 절제의 덕도 갖추어야 한다.","J6","통치자는 지혜뿐 아니라 용기·절제까지 갖춘 자."],
+ ["2025-6평-48","⑤","X","갑과 을: 누가 통치하든 상관없이 정의로운 국가가 될 수 있다.","J8","정의국가는 철인이 통치할 때만. '누가 통치하든'은 ✕."],
+ ["2025-6평-48","③","X","을: 용기는 기개가 영혼을 지배함으로써 발휘되는 덕이다.","J4","영혼을 지배하는 건 이성. 용기는 기개가 '이성의 명령을 따를' 때 발휘. '기개가 지배'는 ✕."],
+ ["2026-6평-51","ㄴ","O","B: 철학자는 이성이 욕구를 다스려 나타난 덕을 지녀야 하는가?","J2","그 덕=절제는 통치자(철학자)도 갖춰야 → 적절한 물음 ○."],
+ ["2026-수능-55","①","O","갑: 국가의 정의와 개인의 정의는 구조에서 유사성을 지닌다.","J5","국가-영혼 구조적 유비."],
+ ["2026-수능-55","②","O","갑: 국가의 통치자는 생산자 계층의 소유물을 착취해서는 안 된다.","J9","수호자 계급은 사유재산 없이 공유; 생산자 재산을 착취 ✗."],
+].map(r=>({id:r[0],sym:r[1],ox:r[2],text:r[3],axis:r[4],why:r[5],hard:false}));
+
+/* ===== 도전 동치 변형 ===== */
+const HARD = [
+ ["2022-수능-40|①","O","J1","대우","어느 한 계층이라도 제 일에 충실하지 않으면 그 국가는 정의롭지 않다.","정의=각 계층의 직분 충실 → 그 부정은 부정의(대우 성립). 진리값 O 유지."],
+ ["2024-수능-45|⑤","O","J1","이중부정","세 계층이 각자 소임을 다하는데도 정의가 실현되지 않는 경우는 없다.","정의=직분 수행. 이중부정으로 강조해도 O."],
+ ["2018-6평-17|②","O","J2","양화 동치","이상 국가에서 절제의 덕을 갖추지 못한 계층은 존재하지 않는다.","'세 계층 모두 갖춤'='못 갖춘 계층 없음'. O 유지."],
+ ["2018-9평-19|②","X","J2","동치(오류 유지)","생산자 이외의 계층에게는 절제의 덕이 요구되지 않는다.","'절제는 생산자만'과 같은 주장. 절제는 세 계층 공통이라 여전히 X."],
+ ["2024-6평-42|②","X","J3","양화 동치(오류 유지)","지혜의 덕을 요구받지 않는 계층은 국가에 존재하지 않는다.","'지혜가 모든 계층에 요구'를 양화로 바꾼 것. 지혜는 통치자 고유라 X."],
+ ["2024-수능-45|②","O","J6","대우","이데아를 인식하지 못한 자는 이상 국가의 통치자가 될 수 없다.","통치자=이데아 인식+지혜 → 대우 성립. O."],
+ ["2022-수능-40|⑤","O","J6","이중부정","절제의 덕이 없는 사람이 이상 국가의 통치자가 될 수 있다고 보기는 어렵다.","통치자는 절제 필수. 이중부정으로 비틀어도 O."],
+ ["2021-수능-37|②","X","J10","양화 동치(오류 유지)","현실의 개별 사물치고 그 안에 이데아가 들어 있지 않은 것은 없다.","'이데아가 모든 사물에 내재'를 양화로 바꾼 것. 이데아는 초월적이라 X."],
+ ["2020-수능-34|②","X","J11","이중부정(오류 유지)","덕을 갖추지 않고도 행복에 이를 길이 없다고는 할 수 없다.","'덕 없이도 행복 가능'을 이중부정으로 쓴 것. 덕=행복 필요조건이라 X."],
+ ["2015-수능-09|①","O","J11","대우","불행해질 수 있는 사람은 정의의 덕을 온전히 갖춘 자가 아니다.","'정의로운 자는 불행 불가'의 대우. O."],
+ ["2018-6평-17|④","X","J8","동치(오류 유지)","이상 국가의 정치적 결정에는 모든 시민이 직접 참여해야 한다.","'전체 직접 정치참여 강조'와 같은 주장. 통치는 철인 몫이라 X."],
+ ["2025-6평-48|⑤","X","J8","동치(오류 유지)","통치자가 누구인지는 국가의 정의로움에 아무 영향을 주지 않는다.","'누가 통치하든 무관'과 동일. 정의국가는 철인 통치 시에만이라 X."],
+ ["2026-수능-55|①","O","J5","이중부정","국가의 정의와 개인의 정의가 구조적으로 무관하다고 볼 수 없다.","국가-영혼 유비. 이중부정으로 써도 O."],
+ ["2024-수능-45|①","X","J7","동치(오류 유지)","타고난 소질만 잘 발휘하면 별도의 선발이나 교육 없이도 통치자가 될 수 있다.","'누구나 소질만으로 통치자'와 동일. 선발+교육 필요라 X."],
+].map(r=>{
+  const [pid,psym]=r[0].split("|");
+  return {id:pid,sym:psym+"·동치",ox:r[1],axis:r[2],form:r[3],text:r[4],why:r[5],hard:true,parent:r[0]};
+});
+
+BASE.forEach(d=>d.key=d.id+"|"+d.sym);
+HARD.forEach(d=>d.key=d.parent+"#"+d.form);
+const ALL=BASE.concat(HARD);
+function byKey(k){return ALL.find(d=>d.key===k)}
+
+/* ===== state ===== */
+const LSP="plato_master_v2", LSB="plato_bm_v1";
+let prog=loadJSON(LSP), BM=loadJSON(LSB);
+function loadJSON(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch(e){return{}}}
+function saveP(){localStorage.setItem(LSP,JSON.stringify(prog))}
+function saveB(){localStorage.setItem(LSB,JSON.stringify(BM))}
+function mastered(k){return !!prog[k]}
+function starred(k){return !!BM[k]}
+
+let diff="basic", mode="normal";   // mode: normal | bookmark
+let pool=[], queue=[], cur=null, answered=false, lastCorrect=false;
+const GAP=4;
+
+function buildPool(){ pool = diff==="hard" ? ALL.slice() : BASE.slice(); }
+
+function restart(){
+  mode="normal";
+  document.getElementById("bmpill").classList.remove("on");
+  buildPool();
+  queue=shuffle(pool.filter(d=>!mastered(d.key)).map(d=>d.key));
+  render();
+}
+function startBookmark(){
+  mode="bookmark";
+  const keys=Object.keys(BM).filter(k=>byKey(k));
+  queue=shuffle(keys.slice());
+  render();
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function render(){
+  updateProgress();
+  const done=document.getElementById("done"), qz=document.getElementById("qzone"), dock=document.getElementById("dock");
+  if(queue.length===0){
+    qz.style.display="none";dock.style.display="none";done.classList.add("show");
+    if(mode==="bookmark"){
+      document.getElementById("doneTitle").textContent="보관 문제 복습 완료 ⭐";
+      document.getElementById("doneSub").textContent="별표는 그대로 남아 있어. 위 ⭐를 다시 누르면 일반 시험으로 돌아가.";
+    }else{
+      const total=pool.length;
+      document.getElementById("doneTitle").textContent="플라톤 "+total+"선지 전부 정복! 🎉";
+      document.getElementById("doneSub").textContent= diff==="hard"
+        ? "동치 변형까지 다 맞혔어. 며칠 뒤 다시 돌려 retention을 확인해봐."
+        : "이제 위 '도전'을 켜서 같은 명제를 더 어렵게 돌려봐.";
+    }
+    return;
+  }
+  qz.style.display="";dock.style.display="";done.classList.remove("show");
+  cur=byKey(queue[0]);answered=false;
+  document.getElementById("qid").textContent=cur.id;
+  const sym=document.getElementById("qsym");
+  if(cur.hard){sym.style.display="";sym.textContent="동치 "+cur.form;}
+  else sym.style.display="none";
+  document.getElementById("qstem").textContent=cur.text;
+  document.getElementById("fb").className="fb";
+  dock.className="dock";
+  syncStar();
+  document.getElementById("qzone").scrollTop=0;
+}
+
+function answer(pick){
+  if(answered)return;answered=true;
+  lastCorrect=(pick===cur.ox);
+  const ax=AX[cur.axis];
+  const pickL = pick==="O"?"○ 옳다":"✕ 아니다";
+  const ansL  = cur.ox==="O"?"○ 옳다":"✕ 아니다";
+
+  const fb=document.getElementById("fb");
+  fb.className="fb show "+(lastCorrect?"ok":"no");
+
+  const res=document.getElementById("fbResult");
+  res.className="fbResult "+(lastCorrect?"ok":"no");
+  res.textContent=lastCorrect?"✅ 맞았어요!":"❌ 틀렸어요";
+
+  document.getElementById("fbCompare").innerHTML=
+    `<span class="cmp ${lastCorrect?'good':'bad'}">내 선택 · ${pickL}</span>`+
+    `<span class="cmp ans">정답 · ${ansL}</span>`;
+
+  document.getElementById("fbConcl").textContent =
+    (cur.ox==="O" ? "→ 이 선지는 플라톤의 입장이 ‘맞다’." : "→ 이 선지는 플라톤의 입장이 ‘아니다’.");
+
+  document.getElementById("fbAx").textContent="["+cur.axis+"] "+ax.name;
+  document.getElementById("fbWhy").textContent=cur.why;
+  const fForm=document.getElementById("fbForm");
+  if(cur.hard){fForm.style.display="";fForm.textContent="🔁 동치형: "+cur.form+" (진리값 보존)";}
+  else fForm.style.display="none";
+  document.getElementById("fbCanon").textContent="플라톤 정설 — "+ax.canon;
+
+  if(lastCorrect){prog[cur.key]=1;saveP();}
+  document.getElementById("dock").className="dock answered";
+}
+
+function nextCard(){
+  const k=queue.shift();
+  let requeue;
+  if(mode==="bookmark") requeue = !lastCorrect;          // 보관함: 틀리면만 다시
+  else requeue = !mastered(k);                            // 일반: 못 맞혔으면 다시
+  if(requeue){
+    const pos=Math.min(GAP+Math.floor(Math.random()*2), queue.length);
+    queue.splice(pos,0,k);
+  }
+  render();
+}
+
+function updateProgress(){
+  const pbar=document.getElementById("pbar"), pm=document.getElementById("pmastered"), pl=document.getElementById("pleft");
+  if(mode==="bookmark"){
+    const total=Object.keys(BM).filter(k=>byKey(k)).length;
+    const remain=new Set(queue).size;
+    pbar.style.width=(total?(total-remain)/total*100:0)+"%";
+    pm.textContent="⭐ 보관 복습";
+    pl.textContent="남은 "+remain+" / 보관 "+total;
+  }else{
+    const total=pool.length, m=pool.filter(d=>mastered(d.key)).length;
+    pbar.style.width=(total?m/total*100:0)+"%";
+    pm.textContent="정복 "+m+"/"+total;
+    pl.textContent="남은 "+queue.length+"개"+(diff==="hard"?" · 도전":"");
+  }
+  document.getElementById("bmCount").textContent=Object.keys(BM).length;
+}
+
+/* ===== bookmark ===== */
+function toggleStar(){
+  if(!cur)return;
+  if(BM[cur.key]) delete BM[cur.key]; else BM[cur.key]=1;
+  saveB();syncStar();updateProgress();
+  toast(BM[cur.key]?"⭐ 보관함에 담음":"보관 해제");
+}
+function syncStar(){
+  const on=starred(cur.key);
+  const s1=document.getElementById("starbtn"), s2=document.getElementById("dockStar");
+  s1.textContent=on?"★":"☆"; s1.classList.toggle("on",on);
+  s2.textContent=on?"★":"☆"; s2.classList.toggle("on",on);
+}
+function toggleBookmarkMode(){
+  if(mode==="bookmark"){restart();return;}
+  if(Object.keys(BM).filter(k=>byKey(k)).length===0){toast("보관함이 비었어요 — 문제에서 ☆를 눌러 담아봐");return;}
+  document.getElementById("bmpill").classList.add("on");
+  startBookmark();
+}
+
+/* difficulty */
+document.querySelectorAll("#diffToggle button").forEach(b=>b.onclick=()=>{
+  if(diff===b.dataset.d && mode==="normal")return;
+  diff=b.dataset.d;
+  document.querySelectorAll("#diffToggle button").forEach(x=>x.classList.toggle("on",x.dataset.d===diff));
+  restart();
+  toast(diff==="hard"?"도전 ON — 동치 변형 포함":"기본 모드");
+});
+
+/* nav */
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");document.getElementById(b.dataset.p).classList.add("active");
+});
+
+let tT;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),1400);}
+
+/* matrix */
+(function(){
+  const host=document.getElementById("axlist");
+  Object.keys(AX).forEach(code=>{
+    const sels=BASE.filter(d=>d.axis===code);
+    const div=document.createElement("div");div.className="axcard";
+    div.innerHTML=`<h3><span class="code">${code}</span>${AX[code].name}<span class="cnt">${sels.length}선지</span></h3>
+      <div class="canon">▶ ${AX[code].canon}</div>`+
+      sels.map(d=>`<div class="sel ${d.ox==='O'?'o':'x'}"><span class="b">${d.ox}</span>${d.text}<span class="id">${d.id} ${d.sym}</span></div>`).join("");
+    host.appendChild(div);
+  });
+})();
+
+/* equiv */
+(function(){
+  const host=document.getElementById("eqlist");
+  HARD.forEach(h=>{
+    const p=BASE.find(d=>d.key===h.parent);
+    const div=document.createElement("div");div.className="eq";
+    div.innerHTML=`<div class="src">[${h.axis}] ${AX[h.axis].name} · 원선지 ${p.id} ${p.sym} (정답 ${p.ox})</div>
+      <div class="orig">원본: “${p.text}”</div>
+      <div class="row"><span class="tag ${h.ox==='O'?'tO':'tX'}">${h.ox}</span><b>${h.form}</b> · ${h.text}</div>`;
+    host.appendChild(div);
+  });
+  const w=document.createElement("div");w.className="eq";
+  w.innerHTML=`<div class="src" style="color:var(--x)">⚠ 거짓동치 — 절대 출제 안 함</div>
+    <div class="orig">원본: “각 계층이 각자 해야 할 일에 충실한 것이 정의이다.” (○)</div>
+    <div class="row warn"><span class="tag tX">X</span><b>의미 전복</b> · 각 계층이 역할을 서로 교환하는 것이 정의이다.</div>
+    <div class="src" style="margin-top:6px">형식만 비슷할 뿐 의미(진리값)가 뒤집힘 → 매트릭스 정설과 대조하면 걸러짐.</div>`;
+  host.appendChild(w);
+})();
+
+/* boot */
+restart();
+</script>
+</body>
+</html>
