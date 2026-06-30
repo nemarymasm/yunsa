@@ -72,6 +72,8 @@
   .why{font-size:15px}
   .form{font-size:12.5px;color:var(--gold);margin-top:8px}
   .canon{font-size:12.5px;color:var(--mut);margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+  .ctx{font-size:12.5px;color:var(--gold);background:rgba(255,207,82,.08);border:1px solid #3a3320;border-radius:9px;padding:7px 11px;margin:2px 0 8px;word-break:keep-all}
+  .fbSrc{font-size:12px;color:#6b7686;margin-top:8px}
 
   /* ===== bottom dock ===== */
   .dock{flex:0 0 auto;padding:10px 14px calc(12px + var(--safe));border-top:1px solid var(--line);background:var(--bg)}
@@ -151,7 +153,8 @@
         <span class="pill hard" id="qsym" style="display:none"></span>
         <button class="starbtn" id="starbtn" onclick="toggleStar()" title="다시 풀 문제 보관">☆</button>
       </div>
-      <div class="ask">이 선지는 <b>플라톤</b>의 입장으로 옳은가?</div>
+      <div class="ctx" id="qctx" style="display:none"></div>
+      <div class="ask" id="qask">이 선지는 <b>플라톤</b>의 입장으로 옳은가?</div>
       <div class="stem" id="qstem">로딩 중…</div>
       <div class="fb" id="fb">
         <div class="fbResult" id="fbResult"></div>
@@ -161,6 +164,7 @@
         <div class="why" id="fbWhy"></div>
         <div class="form" id="fbForm"></div>
         <div class="canon" id="fbCanon"></div>
+        <div class="fbSrc" id="fbSrc" style="display:none"></div>
       </div>
     </div>
 
@@ -290,6 +294,21 @@ HARD.forEach(d=>d.key=d.parent+"#"+d.form);
 const ALL=BASE.concat(HARD);
 function byKey(k){return ALL.find(d=>d.key===k)}
 
+/* ===== 비자족 선지 보정 (referent/물음형) ===== */
+const OVR = {
+  "2017-수능-16|①":{ctx:"가로·세로 낱말 퍼즐의 답 낱말 A를 설명하는 문제 · A = 절제", ask:"다음은 ‘절제(A)’에 대한 설명으로 옳은가?"},
+  "2017-수능-16|②":{ctx:"가로·세로 낱말 퍼즐의 답 낱말 A를 설명하는 문제 · A = 절제", ask:"다음은 ‘절제(A)’에 대한 설명으로 옳은가?"},
+  "2017-수능-16|③":{ctx:"가로·세로 낱말 퍼즐의 답 낱말 A를 설명하는 문제 · A = 절제", ask:"다음은 ‘절제(A)’에 대한 설명으로 옳은가?"},
+  "2017-수능-16|④":{ctx:"가로·세로 낱말 퍼즐의 답 낱말 A를 설명하는 문제 · A = 절제", ask:"다음은 ‘절제(A)’에 대한 설명으로 옳은가?"},
+  "2017-수능-16|⑤":{ctx:"가로·세로 낱말 퍼즐의 답 낱말 A를 설명하는 문제 · A = 절제", ask:"다음은 ‘절제(A)’에 대한 설명으로 옳은가?"},
+  "2020-9평-31|ㄷ":{display:"이성이 욕구를 지배하여 나타나는 덕(절제)은 모든 사람에게 필요하다.", ctx:"원래 ‘탐구 그림’ 문제의 B 물음을 평서문으로 정규화"},
+  "2026-6평-51|ㄴ":{display:"철학자는 이성이 욕구를 다스려 나타난 덕(절제)을 지녀야 한다.", ctx:"원래 ‘탐구 그림’ 문제의 B 물음을 평서문으로 정규화"},
+};
+BASE.forEach(d=>{const o=OVR[d.key]; if(o){d.ctx=o.ctx;d.ask=o.ask;d.display=o.display;}});
+/* 화자표시(갑:/을:/B: …) 자동 제거 — 플라톤 단일 앱이라 라벨이 불필요 */
+function speakerClean(t){return t.replace(/^\s*(갑과\s*을|갑|을|A|B|C)\s*[:：]\s*/,'');}
+function shownText(d){return d.display || speakerClean(d.text);}
+
 /* ===== state ===== */
 const LSP="plato_master_v2", LSB="plato_bm_v1";
 let prog=loadJSON(LSP), BM=loadJSON(LSB);
@@ -343,7 +362,10 @@ function render(){
   const sym=document.getElementById("qsym");
   if(cur.hard){sym.style.display="";sym.textContent="동치 "+cur.form;}
   else sym.style.display="none";
-  document.getElementById("qstem").textContent=cur.text;
+  document.getElementById("qask").innerHTML = cur.ask || "이 선지는 <b>플라톤</b>의 입장으로 옳은가?";
+  const ctxEl=document.getElementById("qctx");
+  if(cur.ctx){ctxEl.style.display="";ctxEl.textContent="📌 "+cur.ctx;} else ctxEl.style.display="none";
+  document.getElementById("qstem").textContent=shownText(cur);
   document.getElementById("fb").className="fb";
   dock.className="dock";
   syncStar();
@@ -377,6 +399,9 @@ function answer(pick){
   if(cur.hard){fForm.style.display="";fForm.textContent="🔁 동치형: "+cur.form+" (진리값 보존)";}
   else fForm.style.display="none";
   document.getElementById("fbCanon").textContent="플라톤 정설 — "+ax.canon;
+  const fbSrc=document.getElementById("fbSrc");
+  if(shownText(cur)!==cur.text){fbSrc.style.display="";fbSrc.textContent="원문 선지: "+cur.text;}
+  else fbSrc.style.display="none";
 
   if(lastCorrect){prog[cur.key]=1;saveP();}
   document.getElementById("dock").className="dock answered";
