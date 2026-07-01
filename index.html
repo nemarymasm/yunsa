@@ -200,16 +200,16 @@
       </div>
       <div class="ctx" id="qctx" style="display:none"></div>
       <div class="ask" id="qask">이 선지는 <b>플라톤</b>의 입장으로 옳은가?</div>
-      <div class="stem" id="qstem">로딩 중…</div>
+      <div class="stem" id="qstem" data-region="stem">로딩 중…</div>
       <div class="notes" id="notes" style="display:none"></div>
       <div class="fb" id="fb">
         <div class="fbResult" id="fbResult"></div>
         <div class="fbCompare" id="fbCompare"></div>
         <div class="fbConcl" id="fbConcl"></div>
         <div class="axline" id="fbAx"></div>
-        <div class="why" id="fbWhy"></div>
+        <div class="why" id="fbWhy" data-region="why"></div>
         <div class="form" id="fbForm"></div>
-        <div class="canon" id="fbCanon"></div>
+        <div class="canon" id="fbCanon" data-region="canon"></div>
         <div class="fbSrc" id="fbSrc" style="display:none"></div>
       </div>
     </div>
@@ -293,7 +293,8 @@ const AX = {
   J9:{name:"사유재산=수호자✗ 생산자✓", canon:"수호자·통치자 계급은 사유재산 금지(공유). 생산자 계층은 사유재산 허용."},
   J10:{name:"이데아론=이성·초월", canon:"이데아는 초월적이며 이성으로만 파악. 감각으로는 가변 현상만, 이데아가 사물 안에 내재하지 않음."},
   J11:{name:"덕=행복 일치", canon:"덕과 행복은 일치. 덕 없이 행복할 수 없고, 정의로운 영혼은 불행해질 수 없다."},
-  J12:{name:"反아리스토텔레스", canon:"실천적 지혜로 파악한 중용, 감정을 통한 덕 등은 아리스토텔레스의 입장 — 플라톤 것이 아니다(변별 함정)."},
+  J12:{name:"反아리스토텔레스", canon:"실천적 지혜로 파악한 중용 등은 아리스토텔레스의 입장 — 플라톤 것이 아니다(변별 함정). ※'감정 배제'는 아리스토텔레스 입장이 아님(그는 감정을 통한 덕)."},
+  J13:{name:"기개=이성의 협력자", canon:"플라톤에서 기개(감정)는 욕망을 억제하고 이성을 돕는 협력자. 유덕한 행위가 감정을 '완전히 배제'해야 하는 건 아니다(감정 배제=스토아 쪽)."},
 };
 
 /* ===== 기본 선지 ===== */
@@ -316,7 +317,7 @@ const BASE = [
  ["2018-9평-19","②","X","갑: 절제는 이상 국가에서 생산자 계층 사람만이 갖춰야 하는 덕이다.","J2","절제가 생산자만 ✕ — 세 계층 모두의 공통 덕."],
  ["2019-6평-23","①","X","갑: 욕구와 관련된 부분의 덕은 행복에 이바지할 수 없다.","J11","욕구 부분의 덕(절제)도 영혼 조화·행복에 기여. '이바지 못함'은 ✕."],
  ["2019-6평-23","②","X","갑: 실천적 지혜를 통해 파악한 중용에 따라 행위해야 한다.","J12","실천적 지혜·중용은 아리스토텔레스. 플라톤 입장 아님."],
- ["2019-6평-23","③","X","갑: 덕 있는 행위는 감정을 배제한 상태에서 이루어져야만 한다.","J12","기개(감정)도 이성에 협력. '감정 완전 배제'는 ✕."],
+ ["2019-6평-23","③","X","갑: 덕 있는 행위는 감정을 배제한 상태에서 이루어져야만 한다.","J13","플라톤에서 기개(감정)는 이성의 협력자 → '감정 완전 배제'는 플라톤 입장 아님(X). 주의: 이건 아리스토텔레스 입장도 아님(그는 적절한 감정이 덕의 일부) — 어느 쪽도 아닌 함정."],
  ["2020-6평-30","ㄴ","X","갑: 절제는 개인의 영혼과 관계없는 공동체의 탁월함이다.","J2","절제는 개인 영혼(이성이 욕망 지배)에서 비롯. '영혼과 무관'은 ✕."],
  ["2020-6평-30","ㄱ","O","갑: 절제는 이성이 욕망을 다스려야 갖출 수 있는 덕이다.","J2","절제의 정의 — 이성이 욕망을 지배함."],
  ["2020-9평-31","ㄷ","O","B: 이성이 욕구를 지배하여 나타나는 덕은 모든 사람에게 필요한가?","J2","그 덕=절제는 세 계층 모두에게 필요 → 적절한 물음 ○."],
@@ -384,7 +385,11 @@ const OVR = {
 };
 BASE.forEach(d=>{const o=OVR[d.key]; if(o){d.ctx=o.ctx;d.ask=o.ask;d.display=o.display;}});
 /* 화자표시(갑:/을:/B: …) 자동 제거 — 플라톤 단일 앱이라 라벨이 불필요 */
-function speakerClean(t){return t.replace(/^\s*(갑과\s*을|갑|을|A|B|C)\s*[:：]\s*/,'');}
+function speakerClean(t){
+  return t
+    .replace(/^\s*(갑과\s*을|갑|을|A|B|C)\s*[:：]\s*/,'')    // 콜론형: "갑:" "을:" "B:"
+    .replace(/^\s*(갑과\s*을|갑|을)(은|이|도|만)\s+/,'');     // 주어형: "갑은" "을은" "갑이" …
+}
 function shownText(d){return d.display || speakerClean(d.text);}
 
 /* ===== state ===== */
@@ -537,11 +542,11 @@ function showFeedback(pick){      // 순수 렌더 — 답한 카드로 되돌�
     (cur.ox==="O" ? "→ 이 선지는 플라톤의 입장이 ‘맞다’." : "→ 이 선지는 플라톤의 입장이 ‘아니다’.");
 
   document.getElementById("fbAx").textContent="["+cur.axis+"] "+ax.name;
-  document.getElementById("fbWhy").textContent=cur.why;
+  paintRegion(document.getElementById("fbWhy"),"why");
   const fForm=document.getElementById("fbForm");
   if(cur.hard){fForm.style.display="";fForm.textContent="🔁 동치형: "+cur.form+" (진리값 보존)";}
   else fForm.style.display="none";
-  document.getElementById("fbCanon").textContent="플라톤 정설 — "+ax.canon;
+  paintRegion(document.getElementById("fbCanon"),"canon");
   const fbSrc=document.getElementById("fbSrc");
   if(shownText(cur)!==cur.text){fbSrc.style.display="";fbSrc.textContent="원문 선지: "+cur.text;}
   else fbSrc.style.display="none";
@@ -653,51 +658,72 @@ function clearObjections(){
 /* ===== 밑줄 메모·질문 (드래그 → 하이라이트 + 각주) ===== */
 let pendingSel=null, selTimer=null;
 function annoCount(){return Object.keys(ANNO).reduce((n,k)=>n+((ANNO[k]||[]).length),0);}
-function paintStem(){
-  const el=document.getElementById("qstem"), txt=shownText(cur);
-  const list=(ANNO[cur.key]||[]).slice().sort((a,b)=>a.s-b.s);
+const RRANK={stem:0,why:1,canon:2}, RLABEL={stem:"선지",why:"해설",canon:"정설"};
+function regionText(region){
+  if(region==="why") return cur.why;
+  if(region==="canon") return "플라톤 정설 — "+AX[cur.axis].canon;
+  return shownText(cur);
+}
+function annEntries(){    // 현재 문제의 메모들을 (영역, 위치)순 정렬 + 번호 부여
+  const arr=(ANNO[cur.key]||[]).map((a,i)=>({a,i,r:a.r||"stem"}));
+  arr.sort((x,y)=>(RRANK[x.r]-RRANK[y.r])||(x.a.s-y.a.s));
+  arr.forEach((x,k)=>x.n=k+1);
+  return arr;
+}
+function paintRegion(el, region){
+  if(!el)return;
+  const txt=regionText(region);
+  const es=annEntries().filter(x=>x.r===region).sort((a,b)=>a.a.s-b.a.s);
   el.innerHTML="";
   let pos=0;
-  list.forEach((a,i)=>{
+  es.forEach(x=>{
+    const a=x.a;
     if(a.s<pos||a.e>txt.length||a.s>=a.e)return;
     if(a.s>pos) el.appendChild(document.createTextNode(txt.slice(pos,a.s)));
-    const m=document.createElement("mark");
-    m.className="anno"; m.dataset.n=i+1; m.textContent=txt.slice(a.s,a.e);
-    m.onclick=(e)=>{e.stopPropagation();flashNote(i);};
+    const m=document.createElement("mark"); m.className="anno"; m.dataset.n=x.n; m.textContent=txt.slice(a.s,a.e);
+    m.onclick=(ev)=>{ev.stopPropagation();flashNote(x.i);};
     el.appendChild(m); pos=a.e;
   });
   if(pos<txt.length) el.appendChild(document.createTextNode(txt.slice(pos)));
 }
-function renderNotes(){
-  const box=document.getElementById("notes"), list=(ANNO[cur.key]||[]);
-  if(!list.length){box.style.display="none";box.innerHTML="";return;}
-  box.style.display="";
-  box.innerHTML="<div class='noteshd'>📝 이 선지 메모</div>"+list.map((a,i)=>
-    `<div class="note" id="note${i}">`+
-    `<span class="nn">${i+1}</span>`+
-    `<span class="q">${esc(a.note)}</span>`+
-    `<button class="del" onclick="delNote(${i})" aria-label="삭제" title="삭제">✕</button>`+
-    `<span class="selq">“${esc(a.text)}”</span></div>`).join("");
+function paintStem(){ paintRegion(document.getElementById("qstem"),"stem"); }
+function paintAll(){
+  paintStem();
+  if(answered){ paintRegion(document.getElementById("fbWhy"),"why"); paintRegion(document.getElementById("fbCanon"),"canon"); }
 }
-function delNote(i){const l=ANNO[cur.key]; if(!l)return; l.splice(i,1); if(!l.length)delete ANNO[cur.key]; saveA(); paintStem(); renderNotes(); updateProgress();}
+function renderNotes(){
+  const box=document.getElementById("notes"), es=annEntries();
+  if(!es.length){box.style.display="none";box.innerHTML="";return;}
+  box.style.display="";
+  box.innerHTML="<div class='noteshd'>📝 이 문제 메모</div>"+es.map(x=>{
+    const a=x.a;
+    return `<div class="note" id="note${x.i}">`+
+      `<span class="nn">${x.n}</span>`+
+      `<span class="q">${esc(a.note)}</span>`+
+      `<button class="del" onclick="delNote(${x.i})" aria-label="삭제" title="삭제">✕</button>`+
+      `<span class="selq">[${RLABEL[x.r]}] “${esc(a.text)}”</span></div>`;
+  }).join("");
+}
+function delNote(i){const l=ANNO[cur.key]; if(!l)return; l.splice(i,1); if(!l.length)delete ANNO[cur.key]; saveA(); paintAll(); renderNotes(); updateProgress();}
 function flashNote(i){const n=document.getElementById("note"+i); if(!n)return; n.scrollIntoView({block:"nearest"}); n.classList.add("flash"); setTimeout(()=>n.classList.remove("flash"),900);}
 function selOffsets(){
   const sel=window.getSelection();
   if(!sel||sel.isCollapsed||sel.rangeCount===0)return null;
-  const el=document.getElementById("qstem");
-  if(!el.contains(sel.anchorNode)||!el.contains(sel.focusNode))return null;
+  let node=sel.anchorNode; const host=node&&node.nodeType===3?node.parentElement:node;
+  const el=host&&host.closest?host.closest("[data-region]"):null;
+  if(!el||!el.contains(sel.focusNode))return null;
   const r=sel.getRangeAt(0);
   const pre=document.createRange(); pre.setStart(el,0); pre.setEnd(r.startContainer,r.startOffset);
   const s=pre.toString().length, t=r.toString(), e=s+t.length;
   if(!t.trim())return null;
-  return {s,e,text:t};
+  return {r:el.dataset.region, s, e, text:t};
 }
 function showAddBtn(){
   const btn=document.getElementById("addnote");
   if(document.getElementById("annoOverlay").classList.contains("show")||document.getElementById("objOverlay").classList.contains("show")){btn.style.display="none";return;}
   const o=selOffsets();
   if(!o){btn.style.display="none";pendingSel=null;return;}
-  const clash=(ANNO[cur.key]||[]).some(a=>o.s<a.e&&a.s<o.e);
+  const clash=(ANNO[cur.key]||[]).some(a=>(a.r||"stem")===o.r && o.s<a.e && a.s<o.e);
   const rect=window.getSelection().getRangeAt(0).getBoundingClientRect();
   btn.textContent = clash? "✕ 겹침" : "＋ 질문·메모";
   btn.dataset.clash = clash?"1":"";
@@ -713,9 +739,8 @@ function addNote(){
   const o=pendingSel; if(!o)return;
   const note=prompt("이 부분에 대한 질문·메모:","");
   if(note!==null&&note.trim()){
-    (ANNO[cur.key]=ANNO[cur.key]||[]).push({s:o.s,e:o.e,text:o.text,note:note.trim()});
-    ANNO[cur.key].sort((a,b)=>a.s-b.s);
-    saveA(); paintStem(); renderNotes(); updateProgress(); toast("📝 메모 저장");
+    (ANNO[cur.key]=ANNO[cur.key]||[]).push({r:o.r,s:o.s,e:o.e,text:o.text,note:note.trim()});
+    saveA(); paintAll(); renderNotes(); updateProgress(); toast("📝 메모 저장");
   }
   window.getSelection().removeAllRanges();
   btn.style.display="none"; pendingSel=null;
