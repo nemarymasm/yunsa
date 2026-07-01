@@ -380,7 +380,7 @@ function speakerClean(t){return t.replace(/^\s*(갑과\s*을|갑|을|A|B|C)\s*[:
 function shownText(d){return d.display || speakerClean(d.text);}
 
 /* ===== state ===== */
-const LSP="plato_master_v2", LSB="plato_bm_v1", LSO="plato_obj_v1", LSA="plato_anno_v1";
+const LSP="plato_master_v2", LSB="plato_bm_v1", LSO="plato_obj_v1", LSA="plato_anno_v1", LSQ="plato_queue_v1";
 let prog=loadJSON(LSP), BM=loadJSON(LSB), OBJ=loadArr(LSO), ANNO=loadJSON(LSA);
 function loadJSON(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch(e){return{}}}
 function loadArr(k){try{const v=JSON.parse(localStorage.getItem(k));return Array.isArray(v)?v:[]}catch(e){return[]}}
@@ -388,6 +388,8 @@ function saveP(){localStorage.setItem(LSP,JSON.stringify(prog))}
 function saveB(){localStorage.setItem(LSB,JSON.stringify(BM))}
 function saveO(){localStorage.setItem(LSO,JSON.stringify(OBJ))}
 function saveA(){localStorage.setItem(LSA,JSON.stringify(ANNO))}
+function saveQ(){if(mode==="normal")localStorage.setItem(LSQ,JSON.stringify({diff,queue}))}
+function loadQ(){try{return JSON.parse(localStorage.getItem(LSQ))}catch(e){return null}}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function mastered(k){return !!prog[k]}
 function starred(k){return !!BM[k]}
@@ -398,11 +400,24 @@ const GAP=4;
 
 function buildPool(){ pool = diff==="hard" ? ALL.slice() : BASE.slice(); }
 
-function restart(){
+function restart(){    // 명시적 새 셔플
   mode="normal";
   document.getElementById("bmpill").classList.remove("on");
   buildPool();
   queue=shuffle(pool.filter(d=>!mastered(d.key)).map(d=>d.key));
+  render();
+}
+function boot(){       // 로드/복귀 시 저장된 순서 이어보기(재셔플 X)
+  const saved=loadQ();
+  if(saved&&(saved.diff==="basic"||saved.diff==="hard")) diff=saved.diff;
+  document.querySelectorAll("#diffToggle button").forEach(x=>x.classList.toggle("on",x.dataset.d===diff));
+  mode="normal";
+  document.getElementById("bmpill").classList.remove("on");
+  buildPool();
+  let q=null;
+  if(saved&&Array.isArray(saved.queue))
+    q=saved.queue.filter(k=>byKey(k)&&!mastered(k)&&pool.some(d=>d.key===k));
+  queue=(q&&q.length)?q:shuffle(pool.filter(d=>!mastered(d.key)).map(d=>d.key));
   render();
 }
 function startBookmark(){
@@ -415,6 +430,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 
 function render(){
   updateProgress();
+  saveQ();
   const done=document.getElementById("done"), qz=document.getElementById("qzone"), dock=document.getElementById("dock");
   if(queue.length===0){
     qz.style.display="none";dock.style.display="none";done.classList.add("show");
@@ -544,7 +560,7 @@ function syncStar(){
   s2.textContent=on?"★":"☆"; s2.classList.toggle("on",on);
 }
 function toggleBookmarkMode(){
-  if(mode==="bookmark"){restart();return;}
+  if(mode==="bookmark"){boot();return;}
   if(Object.keys(BM).filter(k=>byKey(k)).length===0){toast("보관함이 비었어요 — 문제에서 ☆를 눌러 담아봐");return;}
   document.getElementById("bmpill").classList.add("on");
   startBookmark();
@@ -725,7 +741,7 @@ document.addEventListener("keydown",e=>{
 });
 
 /* boot */
-restart();
+boot();
 </script>
 </body>
 </html>
