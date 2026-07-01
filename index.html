@@ -13,11 +13,13 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
+  html{background:#080b10}
   body{
     background:var(--bg);color:var(--txt);
     font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif;
     line-height:1.65;overscroll-behavior:none;
     display:flex;flex-direction:column;height:100dvh;
+    max-width:480px;margin-inline:auto;box-shadow:0 0 0 1px var(--line), 0 0 60px rgba(0,0,0,.55);
   }
   button{font-family:inherit;touch-action:manipulation;user-select:none;cursor:pointer}
 
@@ -92,6 +94,7 @@
   .nextRow .star.on{color:var(--gold);border-color:var(--gold)}
   .nextRow .next{flex:1;height:62px;border-radius:16px;border:none;background:var(--gold);color:#000;font-size:18px;font-weight:800}
   .dock.answered .choices{display:none}
+  .keyhint{text-align:center;font-size:10.5px;color:#566172;margin-top:9px;letter-spacing:-.2px}
   .dock.answered .nextRow{display:flex}
 
   /* ===== done ===== */
@@ -127,9 +130,9 @@
   .toast{position:fixed;left:50%;bottom:calc(96px + var(--safe));transform:translateX(-50%);background:var(--o);color:#04130c;font-weight:800;padding:9px 18px;border-radius:30px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:30;white-space:nowrap;max-width:90vw}
   .toast.show{opacity:1}
   .objpill{background:transparent;border:1px solid #5a4324;color:#e7a14a;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:800}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:40}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:40}
   .overlay.show{display:flex}
-  .sheet{background:var(--panel);width:100%;max-height:82dvh;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + var(--safe));display:flex;flex-direction:column}
+  .sheet{background:var(--panel);width:100%;max-width:480px;max-height:82dvh;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + var(--safe));display:flex;flex-direction:column}
   .sheetH{font-weight:800;font-size:16px;margin-bottom:10px}
   .objList{overflow-y:auto;flex:1}
   .objitem{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
@@ -210,6 +213,7 @@
         <button class="star" id="dockStar" onclick="toggleStar()">☆</button>
         <button class="next" onclick="nextCard()">다음 →</button>
       </div>
+      <div class="keyhint">⌨/리모컨 &nbsp;←○ &nbsp;→✕ &nbsp;↑모름 &nbsp;·&nbsp; Enter·버튼=다음</div>
     </div>
   </div>
 
@@ -580,6 +584,25 @@ function clearObjections(){
     <div class="src" style="margin-top:6px">형식만 비슷할 뿐 의미(진리값)가 뒤집힘 → 매트릭스 정설과 대조하면 걸러짐.</div>`;
   host.appendChild(w);
 })();
+
+/* ===== 키보드 / 리모컨 매핑 (걷기·트레드밀 BT 리모컨용) ===== */
+document.addEventListener("keydown",e=>{
+  if(document.getElementById("objOverlay").classList.contains("show"))return;
+  if(!document.getElementById("loop").classList.contains("active"))return;
+  if(document.getElementById("qzone").style.display==="none")return;   // 완료화면
+  const k=e.key;
+  const O=["ArrowLeft","PageUp","o","O","1"];
+  const X=["ArrowRight","PageDown","x","X","2"];
+  const D=["ArrowUp","d","D","3"];
+  const I=["4","q","Q"];
+  const NEXT=["Enter"," ","ArrowDown","ArrowLeft","ArrowRight","ArrowUp","PageUp","PageDown","o","O","x","X"];
+  if(!answered){
+    if(O.includes(k)){e.preventDefault();answer("O");}
+    else if(X.includes(k)){e.preventDefault();answer("X");}
+    else if(D.includes(k)){e.preventDefault();dunno();}
+    else if(I.includes(k)){e.preventDefault();objectQ();}
+  }else if(NEXT.includes(k)){e.preventDefault();nextCard();}
+});
 
 /* boot */
 restart();
