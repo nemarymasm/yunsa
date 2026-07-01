@@ -167,6 +167,10 @@
       <button class="objpill" id="objpill" style="display:none" onclick="showObjections()">⚑ <span id="objCount">0</span></button>
       <button class="objpill annopill" id="annopill" style="display:none" onclick="showAnnos()">📝 <span id="annoCount">0</span></button>
       <button class="bmpill" id="bmpill" onclick="toggleBookmarkMode()">⭐ <span id="bmCount">0</span></button>
+      <div class="toggle" id="orderToggle">
+        <button data-o="shuffle" class="on">🔀</button>
+        <button data-o="year">📅</button>
+      </div>
       <div class="toggle" id="diffToggle">
         <button data-d="basic" class="on">기본</button>
         <button data-d="hard">도전</button>
@@ -388,13 +392,13 @@ function saveP(){localStorage.setItem(LSP,JSON.stringify(prog))}
 function saveB(){localStorage.setItem(LSB,JSON.stringify(BM))}
 function saveO(){localStorage.setItem(LSO,JSON.stringify(OBJ))}
 function saveA(){localStorage.setItem(LSA,JSON.stringify(ANNO))}
-function saveQ(){if(mode==="normal")localStorage.setItem(LSQ,JSON.stringify({diff,queue}))}
+function saveQ(){if(mode==="normal")localStorage.setItem(LSQ,JSON.stringify({diff,order,queue}))}
 function loadQ(){try{return JSON.parse(localStorage.getItem(LSQ))}catch(e){return null}}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function mastered(k){return !!prog[k]}
 function starred(k){return !!BM[k]}
 
-let diff="basic", mode="normal";   // mode: normal | bookmark
+let diff="basic", order="shuffle", mode="normal";   // mode: normal | bookmark · order: shuffle | year
 let pool=[], queue=[], cur=null, answered=false, lastCorrect=false;
 const GAP=4;
 
@@ -404,20 +408,22 @@ function restart(){    // 명시적 새 셔플
   mode="normal";
   document.getElementById("bmpill").classList.remove("on");
   buildPool();
-  queue=shuffle(pool.filter(d=>!mastered(d.key)).map(d=>d.key));
+  queue=orderedKeys();
   render();
 }
 function boot(){       // 로드/복귀 시 저장된 순서 이어보기(재셔플 X)
   const saved=loadQ();
   if(saved&&(saved.diff==="basic"||saved.diff==="hard")) diff=saved.diff;
+  if(saved&&(saved.order==="shuffle"||saved.order==="year")) order=saved.order;
   document.querySelectorAll("#diffToggle button").forEach(x=>x.classList.toggle("on",x.dataset.d===diff));
+  document.querySelectorAll("#orderToggle button").forEach(x=>x.classList.toggle("on",x.dataset.o===order));
   mode="normal";
   document.getElementById("bmpill").classList.remove("on");
   buildPool();
   let q=null;
   if(saved&&Array.isArray(saved.queue))
     q=saved.queue.filter(k=>byKey(k)&&!mastered(k)&&pool.some(d=>d.key===k));
-  queue=(q&&q.length)?q:shuffle(pool.filter(d=>!mastered(d.key)).map(d=>d.key));
+  queue=(q&&q.length)?q:orderedKeys();
   render();
 }
 function startBookmark(){
@@ -427,6 +433,11 @@ function startBookmark(){
   render();
 }
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function orderedKeys(){
+  const items=pool.filter(d=>!mastered(d.key));
+  if(order==="year") return items.slice().sort((a,b)=>ALL.indexOf(a)-ALL.indexOf(b)).map(d=>d.key);
+  return shuffle(items.map(d=>d.key));
+}
 
 function render(){
   updateProgress();
@@ -565,6 +576,15 @@ function toggleBookmarkMode(){
   document.getElementById("bmpill").classList.add("on");
   startBookmark();
 }
+
+/* order: 랜덤 / 연도순 */
+document.querySelectorAll("#orderToggle button").forEach(b=>b.onclick=()=>{
+  if(order===b.dataset.o && mode==="normal")return;
+  order=b.dataset.o;
+  document.querySelectorAll("#orderToggle button").forEach(x=>x.classList.toggle("on",x.dataset.o===order));
+  restart();
+  toast(order==="year"?"📅 연도순 (2014→2026)":"🔀 랜덤 순서");
+});
 
 /* difficulty */
 document.querySelectorAll("#diffToggle button").forEach(b=>b.onclick=()=>{
