@@ -101,11 +101,11 @@
   .addnote{position:fixed;z-index:35;background:var(--gold);color:#000;font-weight:800;font-size:12.5px;border:none;border-radius:9px;padding:7px 12px;box-shadow:0 4px 14px rgba(0,0,0,.55);display:none}
   .notes{margin-top:14px;display:flex;flex-direction:column;gap:7px}
   .noteshd{font-size:12px;color:var(--mut);font-weight:700}
-  .note{position:relative;font-size:12.5px;border-left:3px solid var(--gold);background:rgba(255,207,82,.07);border-radius:0 9px 9px 0;padding:7px 26px 7px 10px;word-break:keep-all}
-  .note .nn{display:inline-block;min-width:15px;color:var(--gold);font-weight:800;margin-right:5px}
+  .note{display:grid;grid-template-columns:auto 1fr auto;column-gap:7px;row-gap:3px;align-items:start;font-size:12.5px;border-left:3px solid var(--gold);background:rgba(255,207,82,.07);border-radius:0 9px 9px 0;padding:8px 10px;word-break:keep-all}
+  .note .nn{color:var(--gold);font-weight:800}
   .note .q{color:var(--txt)}
-  .note .selq{display:block;color:var(--mut);font-size:11px;margin-top:3px}
-  .note .del{position:absolute;right:8px;top:6px;color:var(--x);font-size:11px;cursor:pointer}
+  .note .del{background:transparent;border:none;color:var(--x);font-size:14px;font-weight:800;line-height:1;padding:0 2px;cursor:pointer;align-self:start}
+  .note .selq{grid-column:1 / -1;color:var(--mut);font-size:11px;margin-top:2px}
   .note.flash{outline:2px solid var(--gold)}
   .annopill{border-color:#5a4c24 !important;color:var(--gold) !important}
   .dock.answered .nextRow{display:flex}
@@ -647,8 +647,10 @@ function renderNotes(){
   if(!list.length){box.style.display="none";box.innerHTML="";return;}
   box.style.display="";
   box.innerHTML="<div class='noteshd'>📝 이 선지 메모</div>"+list.map((a,i)=>
-    `<div class="note" id="note${i}"><span class="del" onclick="delNote(${i})">삭제</span>`+
-    `<span class="nn">${i+1}</span><span class="q">${esc(a.note)}</span>`+
+    `<div class="note" id="note${i}">`+
+    `<span class="nn">${i+1}</span>`+
+    `<span class="q">${esc(a.note)}</span>`+
+    `<button class="del" onclick="delNote(${i})" aria-label="삭제" title="삭제">✕</button>`+
     `<span class="selq">“${esc(a.text)}”</span></div>`).join("");
 }
 function delNote(i){const l=ANNO[cur.key]; if(!l)return; l.splice(i,1); if(!l.length)delete ANNO[cur.key]; saveA(); paintStem(); renderNotes(); updateProgress();}
