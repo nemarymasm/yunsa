@@ -53,6 +53,8 @@
   .pill.hard{color:#000;background:var(--gold);border-color:var(--gold);font-weight:800}
   .starbtn{margin-left:auto;background:transparent;border:none;font-size:26px;line-height:1;color:#54627a;padding:2px 4px}
   .starbtn.on{color:var(--gold)}
+  .navbtn{background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:8px;font-size:14px;line-height:1;padding:4px 9px;font-weight:800}
+  .navbtn:disabled{cursor:default}
   .ask{font-size:13px;color:var(--mut);margin:2px 0 2px}
   .ask b{color:var(--txt)}
   .stem{font-size:21px;font-weight:600;letter-spacing:-.2px;word-break:keep-all;margin:6px 0 4px}
@@ -189,10 +191,12 @@
   <div class="page active" id="loop">
     <div class="qzone" id="qzone">
       <div class="meta">
+        <button class="navbtn" id="prevBtn" onclick="prev()" title="이전 문제">◀</button>
         <span class="pill" id="qid">—</span>
         <span class="pill hard" id="qsym" style="display:none"></span>
         <span id="qflag" style="display:none;color:#e7a14a;font-size:12px;font-weight:800">⚑ 이의됨</span>
         <button class="starbtn" id="starbtn" onclick="toggleStar()" title="다시 풀 문제 보관">☆</button>
+        <button class="navbtn" id="nextBtn" onclick="goNext()" title="다음 문제">▶</button>
       </div>
       <div class="ctx" id="qctx" style="display:none"></div>
       <div class="ask" id="qask">이 선지는 <b>플라톤</b>의 입장으로 옳은가?</div>
@@ -232,7 +236,7 @@
         <button class="star" id="dockStar" onclick="toggleStar()">☆</button>
         <button class="next" onclick="nextCard()">다음 →</button>
       </div>
-      <div class="keyhint">⌨/리모컨 &nbsp;←○ &nbsp;→✕ &nbsp;↑모름 &nbsp;·&nbsp; Enter·버튼=다음</div>
+      <div class="keyhint">⌨/리모컨 &nbsp;←○ →✕ &nbsp;·&nbsp; ↑이전 ↓다음 &nbsp;·&nbsp; Enter=다음 &nbsp; (d=모름)</div>
     </div>
   </div>
 
@@ -392,14 +396,19 @@ function saveP(){localStorage.setItem(LSP,JSON.stringify(prog))}
 function saveB(){localStorage.setItem(LSB,JSON.stringify(BM))}
 function saveO(){localStorage.setItem(LSO,JSON.stringify(OBJ))}
 function saveA(){localStorage.setItem(LSA,JSON.stringify(ANNO))}
-function saveQ(){if(mode==="normal")localStorage.setItem(LSQ,JSON.stringify({diff,order,queue}))}
+function saveQ(){
+  if(mode!=="normal")return;
+  let rem=queue.slice();
+  if(hi>=0&&nav[hi]&&!mastered(nav[hi].key)&&!rem.includes(nav[hi].key)) rem.unshift(nav[hi].key);  // 보고 있던 문제도 유지
+  localStorage.setItem(LSQ,JSON.stringify({diff,order,queue:rem}));
+}
 function loadQ(){try{return JSON.parse(localStorage.getItem(LSQ))}catch(e){return null}}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function mastered(k){return !!prog[k]}
 function starred(k){return !!BM[k]}
 
 let diff="basic", order="shuffle", mode="normal";   // mode: normal | bookmark · order: shuffle | year
-let pool=[], queue=[], cur=null, answered=false, lastCorrect=false;
+let pool=[], queue=[], nav=[], hi=-1, cur=null, answered=false, lastCorrect=false;
 const GAP=4;
 
 function buildPool(){ pool = diff==="hard" ? ALL.slice() : BASE.slice(); }
@@ -409,7 +418,7 @@ function restart(){    // 명시적 새 셔플
   document.getElementById("bmpill").classList.remove("on");
   buildPool();
   queue=orderedKeys();
-  render();
+  nav=[]; hi=-1; advanceNew();
 }
 function boot(){       // 로드/복귀 시 저장된 순서 이어보기(재셔플 X)
   const saved=loadQ();
@@ -424,13 +433,13 @@ function boot(){       // 로드/복귀 시 저장된 순서 이어보기(재셔
   if(saved&&Array.isArray(saved.queue))
     q=saved.queue.filter(k=>byKey(k)&&!mastered(k)&&pool.some(d=>d.key===k));
   queue=(q&&q.length)?q:orderedKeys();
-  render();
+  nav=[]; hi=-1; advanceNew();
 }
 function startBookmark(){
   mode="bookmark";
   const keys=Object.keys(BM).filter(k=>byKey(k));
   queue=shuffle(keys.slice());
-  render();
+  nav=[]; hi=-1; advanceNew();
 }
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function orderedKeys(){
@@ -439,26 +448,46 @@ function orderedKeys(){
   return shuffle(items.map(d=>d.key));
 }
 
-function render(){
-  updateProgress();
-  saveQ();
-  const done=document.getElementById("done"), qz=document.getElementById("qzone"), dock=document.getElementById("dock");
-  if(queue.length===0){
-    qz.style.display="none";dock.style.display="none";done.classList.add("show");
-    if(mode==="bookmark"){
-      document.getElementById("doneTitle").textContent="보관 문제 복습 완료 ⭐";
-      document.getElementById("doneSub").textContent="별표는 그대로 남아 있어. 위 ⭐를 다시 누르면 일반 시험으로 돌아가.";
-    }else{
-      const total=pool.length;
-      document.getElementById("doneTitle").textContent="플라톤 "+total+"선지 전부 정복! 🎉";
-      document.getElementById("doneSub").textContent= diff==="hard"
-        ? "동치 변형까지 다 맞혔어. 며칠 뒤 다시 돌려 retention을 확인해봐."
-        : "이제 위 '도전'을 켜서 같은 명제를 더 어렵게 돌려봐.";
-    }
-    return;
+function renderDone(){
+  updateProgress(); saveQ();
+  document.getElementById("qzone").style.display="none";
+  document.getElementById("dock").style.display="none";
+  document.getElementById("done").classList.add("show");
+  if(mode==="bookmark"){
+    document.getElementById("doneTitle").textContent="보관 문제 복습 완료 ⭐";
+    document.getElementById("doneSub").textContent="별표는 그대로 남아 있어. 위 ⭐를 다시 누르면 일반 시험으로 돌아가.";
+  }else{
+    const total=pool.length;
+    document.getElementById("doneTitle").textContent="플라톤 "+total+"선지 전부 정복! 🎉";
+    document.getElementById("doneSub").textContent= diff==="hard"
+      ? "동치 변형까지 다 맞혔어. 며칠 뒤 다시 돌려 retention을 확인해봐."
+      : "이제 위 '도전'을 켜서 같은 명제를 더 어렵게 돌려봐.";
   }
-  qz.style.display="";dock.style.display="";done.classList.remove("show");
-  cur=byKey(queue[0]);answered=false;
+}
+function entryCorrect(e){const it=byKey(e.key);return e.picked&&it&&e.picked===it.ox;}
+function advanceNew(){                 // 큐에서 새 문제를 뽑아 히스토리 tip에 추가
+  if(hi>=0 && hi===nav.length-1){       // tip을 떠날 때: 아직 못 끝낸 건 큐로 되돌림
+    const e=nav[hi], keep = mode==="bookmark" ? entryCorrect(e) : mastered(e.key);
+    if(!keep){ const pos=Math.min(GAP+Math.floor(Math.random()*2), queue.length); queue.splice(pos,0,e.key); }
+  }
+  if(queue.length===0){ renderDone(); return; }
+  nav.push({key:queue.shift(), picked:undefined});
+  hi=nav.length-1;
+  renderCur();
+}
+function goNext(){ if(hi<nav.length-1){hi++;renderCur();} else advanceNew(); }
+function prev(){ if(hi>0){hi--;renderCur();} }
+function updateNav(){
+  const pb=document.getElementById("prevBtn");
+  if(pb){pb.disabled=hi<=0; pb.style.opacity=hi<=0?.3:1;}
+}
+function renderCur(){                   // 현재 nav[hi] 카드 렌더(답한 카드면 피드백까지 복원)
+  updateProgress(); saveQ();
+  document.getElementById("done").classList.remove("show");
+  document.getElementById("qzone").style.display="";
+  document.getElementById("dock").style.display="";
+  const e=nav[hi];
+  cur=byKey(e.key); answered = e.picked!==undefined;
   document.getElementById("qid").textContent=cur.id;
   const sym=document.getElementById("qsym");
   if(cur.hard){sym.style.display="";sym.textContent="동치 "+cur.form;}
@@ -469,29 +498,38 @@ function render(){
   paintStem();
   renderNotes();
   document.getElementById("addnote").style.display="none";
-  document.getElementById("fb").className="fb";
-  dock.className="dock";
   syncStar();
   document.getElementById("qflag").style.display=OBJ.some(o=>o.key===cur.key)?"":"none";
+  updateNav();
+  if(answered){ showFeedback(e.picked); }
+  else { document.getElementById("fb").className="fb"; document.getElementById("dock").className="dock"; }
   document.getElementById("qzone").scrollTop=0;
 }
 
-function reveal(pick){            // pick: 'O' | 'X' | null(모르겠다)
-  if(answered)return;answered=true;
-  const known = pick!==null;
-  lastCorrect = known && (pick===cur.ox);
+function reveal(pick){            // pick: 'O' | 'X' | null(모르겠다) · 답을 nav에 기록
+  if(answered)return;
+  nav[hi].picked = pick;
+  answered=true;
+  if(pick!==null && pick===cur.ox){ prog[cur.key]=1; saveP(); }
+  showFeedback(pick);
+  updateProgress(); saveQ();
+}
+function showFeedback(pick){      // 순수 렌더 — 답한 카드로 되돌아와도 그대로 복원
+  const known = pick!==null && pick!==undefined;
+  const correct = known && (pick===cur.ox);
+  lastCorrect = correct;
   const ax=AX[cur.axis];
   const ansL = cur.ox==="O"?"○ 옳다":"✕ 아니다";
 
   const fb=document.getElementById("fb");
-  fb.className="fb show "+(lastCorrect?"ok":(known?"no":"dunno"));
+  fb.className="fb show "+(correct?"ok":(known?"no":"dunno"));
 
   const res=document.getElementById("fbResult");
-  res.className="fbResult "+(lastCorrect?"ok":(known?"no":"dn"));
-  res.textContent = !known ? "🤔 모르겠다 — 정답 확인하고 다시 풀자" : (lastCorrect?"✅ 맞았어요!":"❌ 틀렸어요");
+  res.className="fbResult "+(correct?"ok":(known?"no":"dn"));
+  res.textContent = !known ? "🤔 모르겠다 — 정답 확인하고 다시 풀자" : (correct?"✅ 맞았어요!":"❌ 틀렸어요");
 
   let cmp="";
-  if(known) cmp += `<span class="cmp ${lastCorrect?'good':'bad'}">내 선택 · ${pick==="O"?"○ 옳다":"✕ 아니다"}</span>`;
+  if(known) cmp += `<span class="cmp ${correct?'good':'bad'}">내 선택 · ${pick==="O"?"○ 옳다":"✕ 아니다"}</span>`;
   cmp += `<span class="cmp ans">정답 · ${ansL}</span>`;
   document.getElementById("fbCompare").innerHTML=cmp;
 
@@ -508,7 +546,6 @@ function reveal(pick){            // pick: 'O' | 'X' | null(모르겠다)
   if(shownText(cur)!==cur.text){fbSrc.style.display="";fbSrc.textContent="원문 선지: "+cur.text;}
   else fbSrc.style.display="none";
 
-  if(lastCorrect){prog[cur.key]=1;saveP();}
   document.getElementById("dock").className="dock answered";
 }
 function answer(pick){reveal(pick);}
@@ -519,21 +556,10 @@ function objectQ(){
   if(note===null) return;
   OBJ.push({key:cur.key,id:cur.id,sym:cur.sym,text:shownText(cur),note:note,t:new Date().toISOString().slice(0,16).replace("T"," ")});
   saveO();toast("⚑ 이의 기록 후 패스");
-  const k=queue.shift(); queue.push(k);   // 채점 없이 맨 뒤로
-  render();
+  advanceNew();   // 채점 없이 다음(미응답이라 나중에 다시 나옴)
 }
 
-function nextCard(){
-  const k=queue.shift();
-  let requeue;
-  if(mode==="bookmark") requeue = !lastCorrect;          // 보관함: 틀리면만 다시
-  else requeue = !mastered(k);                            // 일반: 못 맞혔으면 다시
-  if(requeue){
-    const pos=Math.min(GAP+Math.floor(Math.random()*2), queue.length);
-    queue.splice(pos,0,k);
-  }
-  render();
-}
+function nextCard(){ goNext(); }
 
 function updateProgress(){
   const pbar=document.getElementById("pbar"), pm=document.getElementById("pmastered"), pl=document.getElementById("pleft");
@@ -749,17 +775,14 @@ document.addEventListener("keydown",e=>{
   if(!document.getElementById("loop").classList.contains("active"))return;
   if(document.getElementById("qzone").style.display==="none")return;   // 완료화면
   const k=e.key;
-  const O=["ArrowLeft","PageUp","o","O","1"];
-  const X=["ArrowRight","PageDown","x","X","2"];
-  const D=["ArrowUp","d","D","3"];
-  const I=["4","q","Q"];
-  const NEXT=["Enter"," ","ArrowDown","ArrowLeft","ArrowRight","ArrowUp","PageUp","PageDown","o","O","x","X"];
+  if(k==="ArrowUp"||k==="PageUp"){e.preventDefault();prev();return;}        // 이전 문제
+  if(k==="ArrowDown"||k==="PageDown"){e.preventDefault();goNext();return;}   // 다음 문제
   if(!answered){
-    if(O.includes(k)){e.preventDefault();answer("O");}
-    else if(X.includes(k)){e.preventDefault();answer("X");}
-    else if(D.includes(k)){e.preventDefault();dunno();}
-    else if(I.includes(k)){e.preventDefault();objectQ();}
-  }else if(NEXT.includes(k)){e.preventDefault();nextCard();}
+    if(["ArrowLeft","o","O","1"].includes(k)){e.preventDefault();answer("O");}
+    else if(["ArrowRight","x","X","2"].includes(k)){e.preventDefault();answer("X");}
+    else if(["d","D","3"].includes(k)){e.preventDefault();dunno();}
+    else if(["q","Q","4"].includes(k)){e.preventDefault();objectQ();}
+  }else if(["Enter"," ","ArrowRight"].includes(k)){e.preventDefault();goNext();}
 });
 
 /* boot */
