@@ -95,6 +95,19 @@
   .nextRow .next{flex:1;height:62px;border-radius:16px;border:none;background:var(--gold);color:#000;font-size:18px;font-weight:800}
   .dock.answered .choices{display:none}
   .keyhint{text-align:center;font-size:10.5px;color:#566172;margin-top:9px;letter-spacing:-.2px}
+  /* annotation */
+  .anno{background:rgba(255,207,82,.26);border-bottom:2px solid var(--gold);border-radius:2px;cursor:pointer;padding:0 1px}
+  .anno::after{content:attr(data-n);font-size:.6em;vertical-align:super;color:var(--gold);font-weight:800;margin-left:1px}
+  .addnote{position:fixed;z-index:35;background:var(--gold);color:#000;font-weight:800;font-size:12.5px;border:none;border-radius:9px;padding:7px 12px;box-shadow:0 4px 14px rgba(0,0,0,.55);display:none}
+  .notes{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+  .noteshd{font-size:12px;color:var(--mut);font-weight:700}
+  .note{position:relative;font-size:12.5px;border-left:3px solid var(--gold);background:rgba(255,207,82,.07);border-radius:0 9px 9px 0;padding:7px 26px 7px 10px;word-break:keep-all}
+  .note .nn{display:inline-block;min-width:15px;color:var(--gold);font-weight:800;margin-right:5px}
+  .note .q{color:var(--txt)}
+  .note .selq{display:block;color:var(--mut);font-size:11px;margin-top:3px}
+  .note .del{position:absolute;right:8px;top:6px;color:var(--x);font-size:11px;cursor:pointer}
+  .note.flash{outline:2px solid var(--gold)}
+  .annopill{border-color:#5a4c24 !important;color:var(--gold) !important}
   .dock.answered .nextRow{display:flex}
 
   /* ===== done ===== */
@@ -152,6 +165,7 @@
       <div class="title">🏛️ 플라톤</div>
       <div class="spacer"></div>
       <button class="objpill" id="objpill" style="display:none" onclick="showObjections()">⚑ <span id="objCount">0</span></button>
+      <button class="objpill annopill" id="annopill" style="display:none" onclick="showAnnos()">📝 <span id="annoCount">0</span></button>
       <button class="bmpill" id="bmpill" onclick="toggleBookmarkMode()">⭐ <span id="bmCount">0</span></button>
       <div class="toggle" id="diffToggle">
         <button data-d="basic" class="on">기본</button>
@@ -179,6 +193,7 @@
       <div class="ctx" id="qctx" style="display:none"></div>
       <div class="ask" id="qask">이 선지는 <b>플라톤</b>의 입장으로 옳은가?</div>
       <div class="stem" id="qstem">로딩 중…</div>
+      <div class="notes" id="notes" style="display:none"></div>
       <div class="fb" id="fb">
         <div class="fbResult" id="fbResult"></div>
         <div class="fbCompare" id="fbCompare"></div>
@@ -228,6 +243,19 @@
     <div class="note"><b>도전 모드</b>를 켜면 같은 명제를 <b>진리값을 보존한 채 더 어렵게</b> 비튼 선지(대우·이중부정·양화 동치)가 섞여 나와. <b style="color:var(--x)">거짓동치</b>(의미가 바뀐 것)는 섞지 않음.</div>
     <div id="eqlist"></div>
   </div></div>
+
+  <button class="addnote" id="addnote" onmousedown="event.preventDefault()" onclick="addNote()">＋ 질문·메모</button>
+
+  <div class="overlay" id="annoOverlay">
+    <div class="sheet">
+      <div class="sheetH">📝 내 메모·질문 (<span id="annoN">0</span>)</div>
+      <div class="objList" id="annoList"></div>
+      <div class="sheetB">
+        <button onclick="copyAnnos()">전체 복사</button>
+        <button class="prim" onclick="hideAnnos()">닫기</button>
+      </div>
+    </div>
+  </div>
 
   <div class="overlay" id="objOverlay">
     <div class="sheet">
@@ -352,13 +380,15 @@ function speakerClean(t){return t.replace(/^\s*(갑과\s*을|갑|을|A|B|C)\s*[:
 function shownText(d){return d.display || speakerClean(d.text);}
 
 /* ===== state ===== */
-const LSP="plato_master_v2", LSB="plato_bm_v1", LSO="plato_obj_v1";
-let prog=loadJSON(LSP), BM=loadJSON(LSB), OBJ=loadArr(LSO);
+const LSP="plato_master_v2", LSB="plato_bm_v1", LSO="plato_obj_v1", LSA="plato_anno_v1";
+let prog=loadJSON(LSP), BM=loadJSON(LSB), OBJ=loadArr(LSO), ANNO=loadJSON(LSA);
 function loadJSON(k){try{return JSON.parse(localStorage.getItem(k))||{}}catch(e){return{}}}
 function loadArr(k){try{const v=JSON.parse(localStorage.getItem(k));return Array.isArray(v)?v:[]}catch(e){return[]}}
 function saveP(){localStorage.setItem(LSP,JSON.stringify(prog))}
 function saveB(){localStorage.setItem(LSB,JSON.stringify(BM))}
 function saveO(){localStorage.setItem(LSO,JSON.stringify(OBJ))}
+function saveA(){localStorage.setItem(LSA,JSON.stringify(ANNO))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function mastered(k){return !!prog[k]}
 function starred(k){return !!BM[k]}
 
@@ -409,7 +439,9 @@ function render(){
   document.getElementById("qask").innerHTML = cur.ask || "이 선지는 <b>플라톤</b>의 입장으로 옳은가?";
   const ctxEl=document.getElementById("qctx");
   if(cur.ctx){ctxEl.style.display="";ctxEl.textContent="📌 "+cur.ctx;} else ctxEl.style.display="none";
-  document.getElementById("qstem").textContent=shownText(cur);
+  paintStem();
+  renderNotes();
+  document.getElementById("addnote").style.display="none";
   document.getElementById("fb").className="fb";
   dock.className="dock";
   syncStar();
@@ -493,6 +525,9 @@ function updateProgress(){
   document.getElementById("bmCount").textContent=Object.keys(BM).length;
   document.getElementById("objCount").textContent=OBJ.length;
   document.getElementById("objpill").style.display=OBJ.length?"":"none";
+  const ac=annoCount();
+  document.getElementById("annoCount").textContent=ac;
+  document.getElementById("annopill").style.display=ac?"":"none";
 }
 
 /* ===== bookmark ===== */
@@ -551,6 +586,91 @@ function copyObjections(){
 function clearObjections(){
   if(!OBJ.length){return;}
   if(confirm("이의 기록을 모두 지울까?")){OBJ=[];saveO();updateProgress();showObjections();if(cur)document.getElementById("qflag").style.display="none";}
+}
+
+/* ===== 밑줄 메모·질문 (드래그 → 하이라이트 + 각주) ===== */
+let pendingSel=null, selTimer=null;
+function annoCount(){return Object.keys(ANNO).reduce((n,k)=>n+((ANNO[k]||[]).length),0);}
+function paintStem(){
+  const el=document.getElementById("qstem"), txt=shownText(cur);
+  const list=(ANNO[cur.key]||[]).slice().sort((a,b)=>a.s-b.s);
+  el.innerHTML="";
+  let pos=0;
+  list.forEach((a,i)=>{
+    if(a.s<pos||a.e>txt.length||a.s>=a.e)return;
+    if(a.s>pos) el.appendChild(document.createTextNode(txt.slice(pos,a.s)));
+    const m=document.createElement("mark");
+    m.className="anno"; m.dataset.n=i+1; m.textContent=txt.slice(a.s,a.e);
+    m.onclick=(e)=>{e.stopPropagation();flashNote(i);};
+    el.appendChild(m); pos=a.e;
+  });
+  if(pos<txt.length) el.appendChild(document.createTextNode(txt.slice(pos)));
+}
+function renderNotes(){
+  const box=document.getElementById("notes"), list=(ANNO[cur.key]||[]);
+  if(!list.length){box.style.display="none";box.innerHTML="";return;}
+  box.style.display="";
+  box.innerHTML="<div class='noteshd'>📝 이 선지 메모</div>"+list.map((a,i)=>
+    `<div class="note" id="note${i}"><span class="del" onclick="delNote(${i})">삭제</span>`+
+    `<span class="nn">${i+1}</span><span class="q">${esc(a.note)}</span>`+
+    `<span class="selq">“${esc(a.text)}”</span></div>`).join("");
+}
+function delNote(i){const l=ANNO[cur.key]; if(!l)return; l.splice(i,1); if(!l.length)delete ANNO[cur.key]; saveA(); paintStem(); renderNotes(); updateProgress();}
+function flashNote(i){const n=document.getElementById("note"+i); if(!n)return; n.scrollIntoView({block:"nearest"}); n.classList.add("flash"); setTimeout(()=>n.classList.remove("flash"),900);}
+function selOffsets(){
+  const sel=window.getSelection();
+  if(!sel||sel.isCollapsed||sel.rangeCount===0)return null;
+  const el=document.getElementById("qstem");
+  if(!el.contains(sel.anchorNode)||!el.contains(sel.focusNode))return null;
+  const r=sel.getRangeAt(0);
+  const pre=document.createRange(); pre.setStart(el,0); pre.setEnd(r.startContainer,r.startOffset);
+  const s=pre.toString().length, t=r.toString(), e=s+t.length;
+  if(!t.trim())return null;
+  return {s,e,text:t};
+}
+function showAddBtn(){
+  const btn=document.getElementById("addnote");
+  if(document.getElementById("annoOverlay").classList.contains("show")||document.getElementById("objOverlay").classList.contains("show")){btn.style.display="none";return;}
+  const o=selOffsets();
+  if(!o){btn.style.display="none";pendingSel=null;return;}
+  const clash=(ANNO[cur.key]||[]).some(a=>o.s<a.e&&a.s<o.e);
+  const rect=window.getSelection().getRangeAt(0).getBoundingClientRect();
+  btn.textContent = clash? "✕ 겹침" : "＋ 질문·메모";
+  btn.dataset.clash = clash?"1":"";
+  btn.style.display="block";
+  let left=rect.left+rect.width/2-45; left=Math.max(8,Math.min(left, window.innerWidth-104));
+  btn.style.left=left+"px";
+  btn.style.top=Math.max(6, rect.top-44)+"px";
+  pendingSel=o;
+}
+function addNote(){
+  const btn=document.getElementById("addnote");
+  if(btn.dataset.clash==="1"){toast("이미 메모가 있는 부분과 겹쳐요");return;}
+  const o=pendingSel; if(!o)return;
+  const note=prompt("이 부분에 대한 질문·메모:","");
+  if(note!==null&&note.trim()){
+    (ANNO[cur.key]=ANNO[cur.key]||[]).push({s:o.s,e:o.e,text:o.text,note:note.trim()});
+    ANNO[cur.key].sort((a,b)=>a.s-b.s);
+    saveA(); paintStem(); renderNotes(); updateProgress(); toast("📝 메모 저장");
+  }
+  window.getSelection().removeAllRanges();
+  btn.style.display="none"; pendingSel=null;
+}
+document.addEventListener("selectionchange",()=>{clearTimeout(selTimer);selTimer=setTimeout(showAddBtn,80);});
+function showAnnos(){
+  const items=[];
+  Object.keys(ANNO).forEach(k=>{const d=byKey(k);(ANNO[k]||[]).forEach(a=>items.push({id:d?d.id:k,sym:d?d.sym:"",text:a.text,note:a.note}));});
+  document.getElementById("annoN").textContent=items.length;
+  document.getElementById("annoList").innerHTML= items.length? items.map(o=>
+    `<div class="objitem"><div class="oi-id">${o.id} ${o.sym}</div><div class="oi-tx">“${esc(o.text)}”</div><div class="oi-note" style="color:var(--gold)">📝 ${esc(o.note)}</div></div>`).join("")
+    : "<div style='color:var(--mut);font-size:13px'>아직 메모 없음</div>";
+  document.getElementById("annoOverlay").classList.add("show");
+}
+function hideAnnos(){document.getElementById("annoOverlay").classList.remove("show");}
+function copyAnnos(){
+  const items=[];Object.keys(ANNO).forEach(k=>{const d=byKey(k);(ANNO[k]||[]).forEach(a=>items.push(`[${d?d.id:k} ${d?d.sym:''}] “${a.text}”\n  ? ${a.note}`));});
+  if(!items.length){toast("메모 없음");return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(items.join("\n\n")).then(()=>toast("메모 전체 복사됨"),()=>toast("복사 실패"));
 }
 
 /* matrix */
